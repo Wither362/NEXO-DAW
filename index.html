@@ -1,0 +1,1133 @@
+<!--
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+	<base target="_top">
+	<style>
+		body {
+			margin: 0;
+			padding: 0;
+			background-color: #1a1a2e;
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+			height: 100vh;
+			overflow: hidden;
+			font-family: 'Segoe UI', sans-serif;
+			user-select: none;
+			color: white;
+			touch-action: none;
+		}
+
+		#game-container {
+			position: relative;
+		}
+
+		canvas {
+			background-color: #0077b6;
+			box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+			border-radius: 5px;
+			border: 4px solid #03045e;
+			display: block;
+			touch-action: none;
+		}
+
+		#ui-container {
+			position: absolute;
+			top: 15px;
+			left: 0;
+			width: 100%;
+			display: flex;
+			justify-content: space-between;
+			padding: 0 20px;
+			box-sizing: border-box;
+			pointer-events: none;
+			text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+		}
+
+		.ui-text {
+			font-size: 20px;
+			font-weight: bold;
+			margin: 0;
+		}
+
+		#start-menu {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background: rgba(0, 0, 0, 0.85);
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+			z-index: 10;
+		}
+
+		h1 {
+			font-size: 48px;
+			margin-bottom: 5px;
+			color: #f1c40f;
+		}
+
+		.btn {
+			background: #27ae60;
+			border: 3px solid #2ecc71;
+			color: white;
+			padding: 10px 30px;
+			font-size: 20px;
+			font-weight: bold;
+			border-radius: 8px;
+			cursor: pointer;
+			margin: 10px 0;
+			transition: transform 0.1s;
+		}
+
+		.btn:active {
+			transform: scale(0.95);
+		}
+
+		.btn-small {
+			font-size: 14px;
+			padding: 5px 15px;
+			background: #34495e;
+			border-color: #2c3e50;
+		}
+
+		#skin-selector {
+			display: flex;
+			gap: 15px;
+			margin-top: 10px;
+			margin-bottom: 10px;
+		}
+
+		.skin-box {
+			width: 30px;
+			height: 30px;
+			border: 2px solid #fff;
+			cursor: pointer;
+			opacity: 0.5;
+		}
+
+		.skin-box.selected {
+			opacity: 1;
+			border-color: #f1c40f;
+			transform: scale(1.1);
+		}
+
+		.input-group {
+			margin: 10px 0;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+		}
+
+		input[type="text"] {
+			padding: 8px;
+			font-size: 16px;
+			text-align: center;
+			border-radius: 4px;
+			border: none;
+			outline: none;
+		}
+
+		#save-controls {
+			display: flex;
+			gap: 10px;
+			margin-top: 20px;
+			border-top: 1px solid #555;
+			padding-top: 20px;
+		}
+
+		input[type="file"] {
+			display: none;
+		}
+	</style>
+</head>
+
+<body>
+
+	<div id="game-container">
+		<div id="ui-container">
+			<p class="ui-text">Semilla: <span id="seed-display">---</span></p>
+			<p class="ui-text">Monedas: <span id="coins-display">0</span></p>
+		</div>
+
+		<div id="start-menu">
+			<h1>GEOMETRY DASH</h1>
+
+			<div class="input-group">
+				<label style="margin-bottom: 5px; font-size: 14px;">Generador por Semilla:</label>
+				<input type="text" id="seed-input" placeholder="Ej: nivelEpico123" value="GD_2026">
+			</div>
+
+			<button class="btn" onclick="startGame()">JUGAR</button>
+
+			<div id="skin-selector"></div>
+			<p id="stats-display">Monedas Totales: 0</p>
+
+			<div id="save-controls">
+				<button class="btn btn-small" onclick="exportDataJSON()">Exportar</button>
+				<label class="btn btn-small" style="cursor: pointer;">
+					Importar <input type="file" id="import-file" accept=".json" onchange="importDataJSON(event)">
+				</label>
+			</div>
+		</div>
+
+		<canvas id="gameCanvas" width="800" height="400"></canvas>
+	</div>
+
+	<script>
+		const canvas = document.getElementById('gameCanvas');
+		const ctx = canvas.getContext('2d');
+
+		let gameState = 'MENU';
+		let totalCoins = 0;
+		let selectedSkinIndex = 0;
+
+		const skins = [
+			{ id: 'amarillo', color: '#f1c40f', detail: '#e67e22' },
+			{ id: 'verde', color: '#2ecc71', detail: '#27ae60' },
+			{ id: 'rojo', color: '#e74c3c', detail: '#c0392b' },
+			{ id: 'azul', color: '#3498db', detail: '#2980b9' }
+		];
+
+		function exportDataJSON() {
+			const saveData = {
+				playerData: {
+					coins: totalCoins,
+					skin: skins[selectedSkinIndex].id
+				},
+				timestamp: new Date().toISOString()
+			};
+			const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(saveData));
+			const anchor = document.createElement('a');
+			anchor.setAttribute("href", dataStr);
+			anchor.setAttribute("download", "gd_save.json");
+			document.body.appendChild(anchor);
+			anchor.click();
+			anchor.remove();
+		}
+
+		function importDataJSON(event) {
+			const file = event.target.files[0];
+			if (!file) return;
+			const reader = new FileReader();
+			reader.onload = function (e) {
+				try {
+					const loaded = JSON.parse(e.target.result);
+					if (loaded.playerData) {
+						totalCoins = loaded.playerData.coins || 0;
+						const sIdx = skins.findIndex(s => s.id === loaded.playerData.skin);
+						selectedSkinIndex = sIdx !== -1 ? sIdx : 0;
+						updateMenuStats();
+						buildSkinSelector();
+						alert("Partida cargada.");
+					}
+				} catch (err) { alert("Error al leer el JSON."); }
+			}; reader.readAsText(file);
+		}
+
+		function updateMenuStats() { document.getElementById('stats-display').innerText = `Monedas Totales: ${totalCoins}`; }
+
+		function buildSkinSelector() {
+			const container = document.getElementById('skin-selector');
+			container.innerHTML = '';
+			skins.forEach((skin, index) => {
+				const box = document.createElement('div');
+				box.className = 'skin-box' + (index === selectedSkinIndex ? ' selected' : '');
+				box.style.backgroundColor = skin.color;
+				box.onclick = () => {
+					selectedSkinIndex = index;
+					buildSkinSelector();
+				};
+				container.appendChild(box);
+			});
+		}
+
+		function xmur3(str) {
+			for (var i = 0, h = 1779033703 ^ str.length; i < str.length; i++) {
+				h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+				h = h << 13 | h >>> 19;
+			}
+			return function () {
+				h = Math.imul(h ^ (h >>> 16), 2246822507);
+				h = Math.imul(h ^ (h >>> 13), 3266489909);
+				return (h ^= h >>> 16) >>> 0;
+			}
+		}
+		function mulberry32(a) {
+			return function () {
+				var t = a += 0x6D2B79F5;
+				t = Math.imul(t ^ t >>> 15, t | 1);
+				t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+				return ((t ^ t >>> 14) >>> 0) / 4294967296;
+			}
+		}
+
+		// --- GENERADOR PROCEDURAL CON CONCIENCIA DE ESTADO ---
+		let activeObjects = [];
+		function generateLevel(seedStr) {
+			let seedGen = xmur3(seedStr);
+			let rand = mulberry32(seedGen());
+			let level = [];
+			let currentX = 800;
+
+			// Variable que rastrea la gravedad actual durante la generación
+			let simGravity = 1;
+
+			for (let i = 0; i < 40; i++) {
+				let gap = 300 + (rand() * 400);
+				currentX += gap;
+
+				let typeRoll = rand();
+
+				// El objeto sabrá si debe ir en el techo si la gravedad simulada está invertida
+				let isCeiling = (simGravity === -1);
+
+				if (typeRoll < 0.3) {
+					level.push({ type: 'block', x: currentX, yOffset: 40, width: 40, height: 40, isOnCeiling: isCeiling });
+					level.push({ type: 'spike', x: currentX + 5, yOffset: 80, width: 30, height: 40, isOnCeiling: isCeiling });
+				} else if (typeRoll < 0.5) {
+					level.push({ type: 'spike', x: currentX, yOffset: 0, width: 30, height: 40, isOnCeiling: isCeiling });
+					level.push({ type: 'spike', x: currentX + 30, yOffset: 0, width: 30, height: 40, isOnCeiling: isCeiling });
+				} else if (typeRoll < 0.6) {
+					let pType = rand() > 0.5 ? 'portal_ship' : 'portal_cube';
+					// Los portales suelen estar en el centro, no atados estrictamente a la gravedad local
+					level.push({ type: pType, x: currentX, yOffset: 50, width: 40, height: 100, isOnCeiling: false });
+				} else if (typeRoll < 0.7) {
+					level.push({ type: 'portal_gravity', x: currentX, yOffset: 50, width: 40, height: 100, isOnCeiling: false });
+					// ¡AQUÍ ESTÁ LA CORRECCIÓN! El generador ahora "recuerda" que invirtió la gravedad.
+					simGravity *= -1;
+				} else if (typeRoll < 0.8) {
+					level.push({ type: 'coin', x: currentX, yOffset: 120, radius: 15, collected: false, isOnCeiling: isCeiling });
+				} else {
+					level.push({ type: 'spike', x: currentX, yOffset: 0, width: 30, height: 40, isOnCeiling: isCeiling });
+				}
+			}
+			return level;
+		}
+
+		const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+		function playSound(f1, f2, type = 'square') {
+			if (audioCtx.state === 'suspended')
+				audioCtx.resume();
+			const osc = audioCtx.createOscillator();
+			const gain = audioCtx.createGain();
+			osc.type = type;
+			osc.frequency.setValueAtTime(f1, audioCtx.currentTime);
+			osc.frequency.exponentialRampToValueAtTime(f2, audioCtx.currentTime + 0.1);
+			gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+			gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+			osc.connect(gain);
+			gain.connect(audioCtx.destination);
+			osc.start();
+			osc.stop(audioCtx.currentTime + 0.1);
+		}
+
+		let cameraX = 0;
+		let baseSpeed = 8;
+		let animationId, lastTime = 0;
+		let isHoldingJump = false;
+		let currentSessionCoins = 0;
+		const groundHeight = 60;
+		const groundY = canvas.height - groundHeight;
+
+		const player = {
+			x: 150,
+			y: 300,
+			width: 40,
+			height: 40,
+			dy: 0,
+			jumpPower: -13.5,
+			gravityBase: 0.85,
+			isGrounded: false,
+			rotation: 0,
+			mode: 'CUBE',
+			gravityDir: 1
+		};
+
+		// -------CONTROLES----------
+
+		function handleActionStart() {
+			if (gameState === 'PLAYING') {
+				isHoldingJump = true;
+				if (player.mode === 'CUBE' && player.isGrounded) {
+					player.dy = player.jumpPower * player.gravityDir;
+					player.isGrounded = false;
+					playSound(150, 300);
+				}
+			} else if (gameState === 'GAME_OVER') {
+				showMenu();
+			}
+		}
+
+		function handleActionEnd() {
+			isHoldingJump = false;
+		}
+
+		// 1. TÁCTIL: Escuchar directamente al Canvas y bloquear gestos del navegador
+		canvas.addEventListener('touchstart', (e) => {
+			e.preventDefault();   // Elimina el retraso de 300ms del doble toque
+			e.stopPropagation();  // Evita que el evento burbujee al iframe de Google
+			handleActionStart();
+		}, { passive: false }); // "passive: false" es obligatorio para que preventDefault funcione
+
+		canvas.addEventListener('touchend', (e) => {
+			e.preventDefault();
+			handleActionEnd();
+		}, { passive: false });
+
+		// 2. RATÓN: Ignorar si el evento viene de un toque táctil (Ghost Click)
+		canvas.addEventListener('mousedown', (e) => {
+			if (e.button === 0) handleActionStart(); // Solo clic izquierdo
+		});
+		canvas.addEventListener('mouseup', handleActionEnd);
+
+		// 3. TECLADO: Se mantiene en el nivel global para captar las teclas en PC
+		window.addEventListener('keydown', (e) => {
+			if (e.code === 'Space' || e.code === 'ArrowUp') handleActionStart();
+		});
+		window.addEventListener('keyup', (e) => {
+			if (e.code === 'Space' || e.code === 'ArrowUp') handleActionEnd();
+		});
+
+		/*
+		document.addEventListener('keydown', (e) => { if (e.code === 'Space' || e.code === 'ArrowUp') handleActionStart(); });
+		document.addEventListener('keyup', (e) => { if (e.code === 'Space' || e.code === 'ArrowUp') handleActionEnd(); });
+		document.addEventListener('mousedown', (e) => { if (e.target.tagName === 'CANVAS') handleActionStart(); });
+		document.addEventListener('mouseup', handleActionEnd);
+		*/
+
+		function startGame() {
+			document.getElementById('start-menu').style.display = 'none';
+			if (audioCtx.state === 'suspended')
+				audioCtx.resume();
+			let seed = document.getElementById('seed-input').value || "GD_2026";
+			document.getElementById('seed-display').innerText = seed;
+			activeObjects = generateLevel(seed);
+			gameState = 'PLAYING';
+			cameraX = 0;
+			currentSessionCoins = 0;
+			document.getElementById('coins-display').innerText = '0';
+			player.mode = 'CUBE';
+			player.gravityDir = 1;
+			player.y = groundY - player.height;
+			player.dy = 0;
+			player.rotation = 0;
+			lastTime = performance.now();
+			cancelAnimationFrame(animationId);
+			animationId = requestAnimationFrame(gameLoop);
+		}
+		function showMenu() {
+			gameState = 'MENU';
+			updateMenuStats();
+			document.getElementById('start-menu').style.display = 'flex';
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+		}
+		function triggerGameOver() {
+			gameState = 'GAME_OVER';
+			totalCoins += currentSessionCoins;
+			playSound(100, 10, 'sawtooth');
+		}
+
+		function gameLoop(timestamp) {
+			if (gameState !== 'PLAYING' && gameState !== 'GAME_OVER')
+				return;
+			if (!lastTime)
+				lastTime = timestamp;
+			let deltaTime = timestamp - lastTime;
+			lastTime = timestamp;
+			if (deltaTime > 100)
+				deltaTime = 16.66;
+			const timeScale = deltaTime / (1000 / 60);
+
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			ctx.fillStyle = '#023e8a';
+			ctx.fillRect(0, groundY, canvas.width, groundHeight);
+			ctx.fillRect(0, 0, canvas.width, groundHeight);
+			ctx.fillStyle = '#fff';
+			ctx.fillRect(0, groundY, canvas.width, 4);
+			ctx.fillRect(0, groundHeight - 4, canvas.width, 4);
+
+			if (gameState === 'PLAYING') {
+				cameraX += baseSpeed * timeScale;
+
+				if (player.mode === 'CUBE') player.dy += player.gravityBase * player.gravityDir * timeScale;
+				else if (player.mode === 'SHIP') {
+					if (isHoldingJump) player.dy -= 0.6 * player.gravityDir * timeScale;
+					player.dy += (player.gravityBase * 0.4) * player.gravityDir * timeScale;
+					if (player.dy > 12) player.dy = 12; if (player.dy < -12) player.dy = -12;
+				}
+				player.y += player.dy * timeScale;
+
+				player.isGrounded = false;
+				if (player.y + player.height >= groundY) {
+					player.y = groundY - player.height; player.dy = 0;
+					if (player.gravityDir === 1) player.isGrounded = true; else if (player.mode === 'CUBE') triggerGameOver();
+				}
+				if (player.y <= groundHeight) {
+					player.y = groundHeight; player.dy = 0;
+					if (player.gravityDir === -1) player.isGrounded = true; else if (player.mode === 'CUBE') triggerGameOver();
+				}
+
+				ctx.save();
+				ctx.translate(player.x + player.width / 2, player.y + player.height / 2);
+				if (player.gravityDir === -1) ctx.scale(1, -1);
+
+				if (player.mode === 'CUBE') {
+					if (!player.isGrounded) player.rotation += 0.12; else player.rotation = Math.round(player.rotation / (Math.PI / 2)) * (Math.PI / 2);
+					ctx.rotate(player.rotation);
+				} else ctx.rotate(player.dy * 0.05);
+
+				const skin = skins[selectedSkinIndex];
+				ctx.fillStyle = skin.color;
+				if (player.mode === 'CUBE') {
+					ctx.fillRect(-player.width / 2, -player.height / 2, player.width, player.height);
+					ctx.strokeStyle = '#000'; ctx.lineWidth = 3; ctx.strokeRect(-player.width / 2, -player.height / 2, player.width, player.height);
+					ctx.fillStyle = skin.detail; ctx.fillRect(-player.width / 4, -player.height / 4, player.width / 2, player.height / 2);
+				} else {
+					ctx.beginPath(); ctx.moveTo(-20, -15); ctx.lineTo(25, 0); ctx.lineTo(-20, 15); ctx.closePath(); ctx.fill(); ctx.stroke();
+					ctx.fillStyle = skin.detail; ctx.beginPath(); ctx.arc(-5, 0, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+				}
+				ctx.restore();
+
+				for (let i = 0; i < activeObjects.length; i++) {
+					let obj = activeObjects[i]; let screenX = obj.x - cameraX;
+
+					if (screenX > -100 && screenX < canvas.width + 100) {
+
+						// LÓGICA DE DIBUJADO Y COLISIÓN AJUSTADA POR TECHO/SUELO
+						if (obj.type === 'spike') {
+							// Calcular la base y la punta basándonos en si pertenece al techo
+							let base = obj.isOnCeiling ? groundHeight + obj.yOffset : groundY - obj.yOffset;
+							let tip = obj.isOnCeiling ? base + obj.height : base - obj.height;
+
+							ctx.fillStyle = '#e74c3c'; ctx.beginPath();
+							ctx.moveTo(screenX + obj.width / 2, tip);
+							ctx.lineTo(screenX + obj.width, base);
+							ctx.lineTo(screenX, base); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+							let rectY = obj.isOnCeiling ? base : base - obj.height;
+							if (checkCollision(player, screenX, rectY, obj.width, obj.height, 5)) triggerGameOver();
+						}
+
+						else if (obj.type === 'block') {
+							// Calcular coordenada Y del bloque
+							let rectY = obj.isOnCeiling ? groundHeight + obj.yOffset : groundY - obj.yOffset - obj.height;
+
+							ctx.fillStyle = '#34495e'; ctx.fillRect(screenX, rectY, obj.width, obj.height);
+							ctx.strokeStyle = '#ecf0f1'; ctx.lineWidth = 2; ctx.strokeRect(screenX, rectY, obj.width, obj.height);
+
+							let blockTop = rectY;
+							let blockBottom = rectY + obj.height;
+
+							if (checkCollision(player, screenX, rectY, obj.width, obj.height, 0)) {
+								let pBottom = player.y + player.height; let pTop = player.y;
+
+								if (player.dy > 0 && pBottom - player.dy <= blockTop + 10) {
+									player.y = blockTop - player.height; player.dy = 0; player.isGrounded = true;
+								} else if (player.dy < 0 && pTop - player.dy >= blockBottom - 10 && player.gravityDir === -1) {
+									player.y = blockBottom; player.dy = 0; player.isGrounded = true;
+								} else triggerGameOver();
+							}
+						}
+
+						else if (obj.type === 'coin' && !obj.collected) {
+							let drawY = obj.isOnCeiling ? groundHeight + obj.yOffset + obj.radius : groundY - obj.yOffset - obj.radius;
+							ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(screenX, drawY, obj.radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+							ctx.fillStyle = '#e67e22'; ctx.beginPath(); ctx.arc(screenX, drawY, obj.radius / 2, 0, Math.PI * 2); ctx.fill();
+
+							let dist = Math.hypot((player.x + player.width / 2) - screenX, (player.y + player.height / 2) - drawY);
+							if (dist < obj.radius + 20) { obj.collected = true; currentSessionCoins++; document.getElementById('coins-display').innerText = currentSessionCoins; playSound(600, 1200, 'sine'); }
+						}
+
+						else if (obj.type === 'portal_ship' || obj.type === 'portal_cube') {
+							let drawY = groundY - obj.yOffset;
+							ctx.fillStyle = obj.type === 'portal_ship' ? 'rgba(155, 89, 182, 0.5)' : 'rgba(46, 204, 113, 0.5)';
+							ctx.fillRect(screenX, drawY - obj.height, obj.width, obj.height);
+							if (checkCollision(player, screenX, drawY - obj.height, obj.width, obj.height, -10)) {
+								if (player.mode !== (obj.type === 'portal_ship' ? 'SHIP' : 'CUBE')) { player.mode = obj.type === 'portal_ship' ? 'SHIP' : 'CUBE'; playSound(200, 100, 'square'); }
+							}
+						}
+
+						else if (obj.type === 'portal_gravity') {
+							let drawY = groundY - obj.yOffset;
+							ctx.fillStyle = 'rgba(241, 196, 15, 0.5)'; ctx.fillRect(screenX, drawY - obj.height, obj.width, obj.height);
+							if (checkCollision(player, screenX, drawY - obj.height, obj.width, obj.height, -10)) {
+								if (!obj.used) { player.gravityDir *= -1; obj.used = true; playSound(400, 200, 'sine'); }
+							}
+						}
+					}
+				}
+			}
+			else if (gameState === 'GAME_OVER') {
+				ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+				ctx.fillStyle = 'white'; ctx.font = 'bold 48px sans-serif'; ctx.textAlign = 'center';
+				ctx.fillText('¡HAS CHOCADO!', canvas.width / 2, canvas.height / 2 - 20); ctx.font = '24px sans-serif'; ctx.fillStyle = '#f1c40f';
+				ctx.fillText('Clic/Espacio para volver al menú', canvas.width / 2, canvas.height / 2 + 20);
+			}
+			animationId = requestAnimationFrame(gameLoop);
+		}
+
+		function checkCollision(p, objX, objY, objW, objH, tol) { return (p.x < objX + objW - tol && p.x + p.width > objX + tol && p.y < objY + objH - tol && p.y + p.height > objY + tol); }
+		buildSkinSelector(); updateMenuStats(); showMenu();
+	</script>
+</body>
+
+</html>
+-->
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+	<base target="_top">
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+	<style>
+		body {
+			margin: 0;
+			padding: 0;
+			background-color: #1a1a2e;
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+			height: 100vh;
+			overflow: hidden;
+			font-family: 'Segoe UI', sans-serif;
+			user-select: none;
+			color: white;
+			touch-action: none;
+		}
+
+		#game-container {
+			position: relative;
+		}
+
+		canvas {
+			background-color: #0077b6;
+			box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+			border-radius: 5px;
+			border: 4px solid #03045e;
+			display: block;
+			touch-action: none;
+		}
+
+		#ui-container {
+			position: absolute;
+			top: 15px;
+			left: 0;
+			width: 100%;
+			display: flex;
+			justify-content: space-between;
+			padding: 0 20px;
+			box-sizing: border-box;
+			pointer-events: none;
+			text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+		}
+
+		.ui-text {
+			font-size: 20px;
+			font-weight: bold;
+			margin: 0;
+		}
+
+		#start-menu {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background: rgba(0, 0, 0, 0.9);
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+			z-index: 10;
+		}
+
+		h1 {
+			font-size: 48px;
+			margin-bottom: 5px;
+			color: #f1c40f;
+			text-shadow: 0px 4px 10px rgba(241, 196, 15, 0.4);
+		}
+
+		.btn {
+			background: #27ae60;
+			border: 3px solid #2ecc71;
+			color: white;
+			padding: 10px 30px;
+			font-size: 20px;
+			font-weight: bold;
+			border-radius: 8px;
+			cursor: pointer;
+			margin: 10px 0;
+			transition: transform 0.1s;
+		}
+
+		.btn:active {
+			transform: scale(0.95);
+		}
+
+		.btn.purple {
+			background: #8e44ad;
+			border-color: #9b59b6;
+		}
+
+		#skin-selector {
+			display: flex;
+			gap: 15px;
+			margin-top: 10px;
+			margin-bottom: 10px;
+		}
+
+		.skin-box {
+			width: 30px;
+			height: 30px;
+			border: 2px solid #fff;
+			cursor: pointer;
+			opacity: 0.5;
+		}
+
+		.skin-box.selected {
+			opacity: 1;
+			border-color: #f1c40f;
+			transform: scale(1.1);
+		}
+
+		.menu-section {
+			background: rgba(255, 255, 255, 0.05);
+			padding: 15px;
+			border-radius: 8px;
+			margin: 10px 0;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			width: 300px;
+		}
+
+		input[type="text"] {
+			padding: 8px;
+			font-size: 16px;
+			text-align: center;
+			border-radius: 4px;
+			border: none;
+			outline: none;
+			width: 80%;
+		}
+
+		input[type="file"] {
+			display: none;
+		}
+	</style>
+</head>
+
+<body>
+
+	<div id="game-container">
+		<div id="ui-container">
+			<p class="ui-text">Modo: <span id="level-mode-display">Semilla</span></p>
+			<p class="ui-text">Monedas: <span id="coins-display">0</span></p>
+		</div>
+
+		<div id="start-menu">
+			<h1>GEOMETRY DASH</h1>
+
+			<div class="menu-section">
+				<label style="margin-bottom: 5px; font-size: 14px; color: #aaa;">Jugar Nivel Aleatorio (Semilla):</label>
+				<input type="text" id="seed-input" placeholder="Semilla" value="GD_2026">
+				<button class="btn" onclick="startGame('SEED')">JUGAR SEMILLA</button>
+			</div>
+
+			<div class="menu-section">
+				<label style="margin-bottom: 5px; font-size: 14px; color: #aaa;">O jugar un nivel de la comunidad:</label>
+				<label class="btn purple" style="font-size: 16px; cursor: pointer; margin-bottom: 0;">📂 Cargar Nivel (.json)
+					<input type="file" accept=".json" onchange="importCustomLevel(event)">
+				</label>
+				<button class="btn" id="play-custom-btn" onclick="startGame('CUSTOM')" style="display: none; background: #e67e22; border-color: #d35400;">▶️ JUGAR NIVEL IMPORTADO
+				</button>
+			</div>
+
+			<div id="skin-selector"></div>
+		</div>
+
+		<canvas id="gameCanvas" width="800" height="400"></canvas>
+	</div>
+
+	<script>
+		const canvas = document.getElementById('gameCanvas');
+		const ctx = canvas.getContext('2d');
+
+		let gameState = 'MENU';
+		let selectedSkinIndex = 0;
+		let customLevelData = null; // Guardará el nivel importado
+		let maxLevelX = 0; // Para saber cuándo ganamos
+
+		const skins = [
+			{ id: 'amarillo', color: '#f1c40f', detail: '#e67e22' },
+			{ id: 'verde', color: '#2ecc71', detail: '#27ae60' },
+			{ id: 'rojo', color: '#e74c3c', detail: '#c0392b' },
+			{ id: 'azul', color: '#3498db', detail: '#2980b9' }
+		];
+
+		function buildSkinSelector() {
+			const container = document.getElementById('skin-selector'); container.innerHTML = '';
+			skins.forEach((skin, index) => {
+				const box = document.createElement('div');
+				box.className = 'skin-box' + (index === selectedSkinIndex ? ' selected' : '');
+				box.style.backgroundColor = skin.color;
+				box.onclick = () => { selectedSkinIndex = index; buildSkinSelector(); };
+				container.appendChild(box);
+			});
+		}
+
+		// --- CARGAR NIVELES JSON ---
+		// --- CARGAR NIVELES JSON ---
+		function importCustomLevel(event) {
+			const file = event.target.files[0];
+			if (!file)
+				return;
+
+			const reader = new FileReader();
+			reader.onload = function (e) {
+				try {
+					const loaded = JSON.parse(e.target.result);
+
+					// VALIDACIÓN ACTUALIZADA: Comprobamos la nueva estructura de objeto raíz
+					if (loaded && loaded.objects && Array.isArray(loaded.objects) && loaded.objects.length > 0) {
+						customLevelData = loaded;
+						const btn = document.getElementById('play-custom-btn');
+						btn.style.display = 'block';
+
+						// Extraemos el nombre del nivel (o ponemos uno por defecto)
+						const levelName = loaded.level_name || 'Nivel sin nombre';
+						btn.innerText = `▶ JUGAR: ${levelName} (${loaded.objects.length} obj)`;
+
+						alert(`Nivel "${levelName}" cargado correctamente.`);
+					} else {
+						alert("Formato de nivel no válido. Asegúrate de exportar usando el editor de la última versión.");
+					}
+				} catch (err) {
+					alert("Error al leer el archivo JSON del nivel.");
+				}
+			};
+			reader.readAsText(file);
+		}
+
+		// --- GENERADOR PROCEDURAL (Backup) ---
+		function xmur3(str) {
+			for (var i = 0, h = 1779033703 ^ str.length; i < str.length; i++) {
+				h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+				h = h << 13 | h >>> 19;
+			}
+			return function () {
+				h = Math.imul(h ^ (h >>> 16), 2246822507);
+				h = Math.imul(h ^ (h >>> 13), 3266489909);
+				return (h ^= h >>> 16) >>> 0;
+			}
+		}
+		function mulberry32(a) { return function () { var t = a += 0x6D2B79F5; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; } }
+
+		function generateProceduralLevel(seedStr) {
+			let rand = mulberry32(xmur3(seedStr)());
+			let level = []; let currentX = 800; let simGravity = 1;
+
+			for (let i = 0; i < 40; i++) {
+				let gap = 300 + (rand() * 400); currentX += gap;
+				let typeRoll = rand(); let isCeiling = (simGravity === -1);
+
+				if (typeRoll < 0.2) {
+					level.push({ type: 'block', x: currentX, yOffset: 40, width: 40, height: 40, isOnCeiling: isCeiling });
+					level.push({ type: 'spike', x: currentX + 5, yOffset: 80, width: 30, height: 40, isOnCeiling: isCeiling });
+				} else if (typeRoll < 0.3) {
+					level.push({ type: 'yellow_pad', x: currentX, yOffset: 0, width: 40, height: 10, isOnCeiling: isCeiling });
+				} else if (typeRoll < 0.4) {
+					level.push({ type: 'portal_ship', x: currentX, yOffset: 50, width: 40, height: 100 });
+				} else if (typeRoll < 0.5) {
+					level.push({ type: 'portal_gravity', x: currentX, yOffset: 50, width: 40, height: 100 }); simGravity *= -1;
+				} else if (typeRoll < 0.6) {
+					level.push({ type: 'coin', x: currentX, yOffset: 120, width: 30, height: 30, collected: false, isOnCeiling: isCeiling });
+				} else {
+					level.push({ type: 'spike', x: currentX, yOffset: 0, width: 30, height: 40, isOnCeiling: isCeiling });
+				}
+			}
+			return level;
+		}
+
+		// --- AUDIO ---
+		const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+		function playSound(f1, f2, type = 'square') {
+			if (audioCtx.state === 'suspended') audioCtx.resume();
+			const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+			osc.type = type; osc.frequency.setValueAtTime(f1, audioCtx.currentTime);
+			osc.frequency.exponentialRampToValueAtTime(f2, audioCtx.currentTime + 0.1);
+			gain.gain.setValueAtTime(0.05, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+			osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+		}
+
+		// --- VARIABLES DE JUEGO PRINCIPALES ---
+		let cameraX = 0; let baseSpeed = 8; let animationId, lastTime = 0; let isHoldingJump = false; let currentSessionCoins = 0;
+		const groundHeight = 60; const groundY = canvas.height - groundHeight;
+		let activeObjects = [];
+
+		const player = {
+			x: 150, y: 300, width: 40, height: 40, dy: 0, jumpPower: -13.5, gravityBase: 0.85, isGrounded: false, rotation: 0, mode: 'CUBE', gravityDir: 1
+		};
+
+		function checkCollision(p, objX, objY, objW, objH, tol) { return (p.x < objX + objW - tol && p.x + p.width > objX + tol && p.y < objY + objH - tol && p.y + p.height > objY + tol); }
+
+		// --- DICCIONARIO DE OBJETOS (El núcleo del nuevo motor) ---
+		const ObjectDictionary = {
+			'spike': {
+				draw: (ctx, screenX, drawY, obj) => {
+					let base = obj.isOnCeiling ? groundHeight + (obj.yOffset || 0) : drawY;
+					let tip = obj.isOnCeiling ? base + (obj.height || 40) : base - (obj.height || 40);
+					ctx.fillStyle = '#e74c3c'; ctx.beginPath();
+					ctx.moveTo(screenX + (obj.width || 30) / 2, tip);
+					ctx.lineTo(screenX + (obj.width || 30), base);
+					ctx.lineTo(screenX, base); ctx.closePath(); ctx.fill(); ctx.stroke();
+				},
+				collide: (p, screenX, drawY, obj) => {
+					let h = obj.height || 40; let w = obj.width || 30;
+					let base = obj.isOnCeiling ? groundHeight + (obj.yOffset || 0) : drawY;
+					let rectY = obj.isOnCeiling ? base : base - h;
+					if (checkCollision(p, screenX, rectY, w, h, 5)) triggerEnd('GAME_OVER');
+				}
+			},
+			'block': {
+				draw: (ctx, screenX, drawY, obj) => {
+					let h = obj.height || 40; let w = obj.width || 40;
+					let rectY = obj.isOnCeiling ? groundHeight + (obj.yOffset || 0) : drawY - h;
+					ctx.fillStyle = '#34495e'; ctx.fillRect(screenX, rectY, w, h);
+					ctx.strokeStyle = '#ecf0f1'; ctx.lineWidth = 2; ctx.strokeRect(screenX, rectY, w, h);
+				},
+				collide: (p, screenX, drawY, obj) => {
+					let h = obj.height || 40; let w = obj.width || 40;
+					let rectY = obj.isOnCeiling ? groundHeight + (obj.yOffset || 0) : drawY - h;
+					if (checkCollision(p, screenX, rectY, w, h, 0)) {
+						let pBottom = p.y + p.height; let pTop = p.y;
+						if (p.dy > 0 && pBottom - p.dy <= rectY + 10) {
+							p.y = rectY - p.height; p.dy = 0; p.isGrounded = true;
+						} else if (p.dy < 0 && pTop - p.dy >= rectY + h - 10 && p.gravityDir === -1) {
+							p.y = rectY + h; p.dy = 0; p.isGrounded = true;
+						} else triggerEnd('GAME_OVER');
+					}
+				}
+			},
+			'yellow_pad': {
+				draw: (ctx, screenX, drawY, obj) => {
+					let h = 10; let w = obj.width || 40;
+					let rectY = obj.isOnCeiling ? groundHeight + (obj.yOffset || 0) : drawY - h;
+					ctx.fillStyle = '#f1c40f'; ctx.fillRect(screenX, rectY, w, h);
+				},
+				collide: (p, screenX, drawY, obj) => {
+					let h = 10; let w = obj.width || 40;
+					let rectY = obj.isOnCeiling ? groundHeight + (obj.yOffset || 0) : drawY - h;
+					if (checkCollision(p, screenX, rectY, w, h, 0)) {
+						let pBottom = p.y + p.height; let pTop = p.y;
+						// Super salto invirtiendo la dirección actual de la gravedad
+						if ((p.dy > 0 && pBottom - p.dy <= rectY + 15) || (p.dy < 0 && pTop - p.dy >= rectY + h - 15 && p.gravityDir === -1)) {
+							p.dy = -18 * p.gravityDir;
+							p.isGrounded = false;
+							playSound(300, 600, 'sine');
+						} else triggerEnd('GAME_OVER');
+					}
+				}
+			},
+			'coin': {
+				draw: (ctx, screenX, drawY, obj) => {
+					if (obj.collected) return;
+					let radius = 15;
+					let cy = obj.isOnCeiling ? groundHeight + (obj.yOffset || 0) + radius : drawY - radius;
+					let cx = screenX + (obj.width || 40) / 2;
+					ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+					ctx.fillStyle = '#e67e22'; ctx.beginPath(); ctx.arc(cx, cy, radius / 2, 0, Math.PI * 2); ctx.fill();
+				},
+				collide: (p, screenX, drawY, obj) => {
+					if (obj.collected) return;
+					let radius = 15;
+					let cy = obj.isOnCeiling ? groundHeight + (obj.yOffset || 0) + radius : drawY - radius;
+					let cx = screenX + (obj.width || 40) / 2;
+					let dist = Math.hypot((p.x + p.width / 2) - cx, (p.y + p.height / 2) - cy);
+					if (dist < radius + 20) {
+						obj.collected = true; currentSessionCoins++;
+						document.getElementById('coins-display').innerText = currentSessionCoins;
+						playSound(600, 1200, 'sine');
+					}
+				}
+			},
+			'portal_ship': {
+				draw: (ctx, screenX, drawY, obj) => {
+					let h = 100; let w = obj.width || 40;
+					let rectY = groundY - (obj.yOffset || 0) - h;
+					ctx.fillStyle = 'rgba(155, 89, 182, 0.5)'; ctx.fillRect(screenX, rectY, w, h);
+				},
+				collide: (p, screenX, drawY, obj) => {
+					let h = 100; let w = obj.width || 40;
+					let rectY = groundY - (obj.yOffset || 0) - h;
+					if (checkCollision(p, screenX, rectY, w, h, -10)) {
+						if (p.mode !== 'SHIP') { p.mode = 'SHIP'; playSound(200, 100, 'square'); }
+					}
+				}
+			}
+			// Los portales de gravedad y cubo seguirían exactamente la misma estructura abstracta.
+		};
+
+		// --- CONTROLES SIN LAG (MÓVIL Y PC) ---
+		function handleActionStart() {
+			if (gameState === 'PLAYING') {
+				isHoldingJump = true;
+				if (player.mode === 'CUBE' && player.isGrounded) {
+					player.dy = player.jumpPower * player.gravityDir; player.isGrounded = false; playSound(150, 300);
+				}
+			} else if (gameState === 'GAME_OVER' || gameState === 'VICTORY') showMenu();
+		}
+		function handleActionEnd() { isHoldingJump = false; }
+
+		canvas.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); handleActionStart(); }, { passive: false });
+		canvas.addEventListener('touchend', (e) => { e.preventDefault(); handleActionEnd(); }, { passive: false });
+		canvas.addEventListener('mousedown', (e) => { if (e.button === 0) handleActionStart(); });
+		canvas.addEventListener('mouseup', handleActionEnd);
+		window.addEventListener('keydown', (e) => { if (e.code === 'Space' || e.code === 'ArrowUp') handleActionStart(); });
+		window.addEventListener('keyup', (e) => { if (e.code === 'Space' || e.code === 'ArrowUp') handleActionEnd(); });
+
+		// --- LÓGICA PRINCIPAL ---
+		// --- LÓGICA PRINCIPAL ---
+		function startGame(mode) {
+			document.getElementById('start-menu').style.display = 'none';
+			if (audioCtx.state === 'suspended') audioCtx.resume();
+
+			if (mode === 'SEED') {
+				let seed = document.getElementById('seed-input').value || "GD_2026";
+				document.getElementById('level-mode-display').innerText = "Semilla";
+				activeObjects = generateProceduralLevel(seed);
+			} else if (mode === 'CUSTOM') {
+				// Mostramos el nombre del nivel en la barra superior de la interfaz
+				document.getElementById('level-mode-display').innerText = customLevelData.level_name || "Personalizado";
+
+				// ¡CAMBIO CLAVE! Extraemos y clonamos solo la matriz 'objects'
+				activeObjects = JSON.parse(JSON.stringify(customLevelData.objects));
+			}
+
+			// Calcular la meta del nivel (El objeto más lejano + 800 píxeles de margen)
+			maxLevelX = Math.max(...activeObjects.map(o => o.x));
+
+			gameState = 'PLAYING';
+			cameraX = 0;
+			currentSessionCoins = 0;
+			document.getElementById('coins-display').innerText = '0';
+
+			player.mode = 'CUBE';
+			player.gravityDir = 1;
+			player.y = groundY - player.height;
+			player.dy = 0;
+			player.rotation = 0;
+
+			lastTime = performance.now();
+			cancelAnimationFrame(animationId);
+			animationId = requestAnimationFrame(gameLoop);
+		}
+
+		function showMenu() {
+			gameState = 'MENU'; document.getElementById('start-menu').style.display = 'flex';
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+		}
+
+		function triggerEnd(state) {
+			gameState = state;
+			if (state === 'GAME_OVER') playSound(100, 10, 'sawtooth');
+			else playSound(300, 800, 'sine'); // Sonido de victoria
+		}
+
+		function gameLoop(timestamp) {
+			if (gameState !== 'PLAYING' && gameState !== 'GAME_OVER' && gameState !== 'VICTORY') return;
+			if (!lastTime) lastTime = timestamp;
+			let deltaTime = timestamp - lastTime; lastTime = timestamp;
+			if (deltaTime > 100) deltaTime = 16.66; const timeScale = deltaTime / (1000 / 60);
+
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			ctx.fillStyle = '#023e8a'; ctx.fillRect(0, groundY, canvas.width, groundHeight); ctx.fillRect(0, 0, canvas.width, groundHeight);
+			ctx.fillStyle = '#fff'; ctx.fillRect(0, groundY, canvas.width, 4); ctx.fillRect(0, groundHeight - 4, canvas.width, 4);
+
+			if (gameState === 'PLAYING') {
+				cameraX += baseSpeed * timeScale;
+
+				// CONDICIÓN DE VICTORIA
+				if (cameraX > maxLevelX + 800) {
+					triggerEnd('VICTORY');
+					return;
+				}
+
+				if (player.mode === 'CUBE') player.dy += player.gravityBase * player.gravityDir * timeScale;
+				else if (player.mode === 'SHIP') {
+					if (isHoldingJump) player.dy -= 0.6 * player.gravityDir * timeScale;
+					player.dy += (player.gravityBase * 0.4) * player.gravityDir * timeScale;
+					if (player.dy > 12) player.dy = 12; if (player.dy < -12) player.dy = -12;
+				}
+				player.y += player.dy * timeScale;
+
+				player.isGrounded = false;
+				if (player.y + player.height >= groundY) {
+					player.y = groundY - player.height; player.dy = 0;
+					if (player.gravityDir === 1) player.isGrounded = true; else if (player.mode === 'CUBE') triggerEnd('GAME_OVER');
+				}
+				if (player.y <= groundHeight) {
+					player.y = groundHeight; player.dy = 0;
+					if (player.gravityDir === -1) player.isGrounded = true; else if (player.mode === 'CUBE') triggerEnd('GAME_OVER');
+				}
+
+				ctx.save();
+				ctx.translate(player.x + player.width / 2, player.y + player.height / 2);
+				if (player.gravityDir === -1) ctx.scale(1, -1);
+
+				if (player.mode === 'CUBE') {
+					if (!player.isGrounded) player.rotation += 0.12; else player.rotation = Math.round(player.rotation / (Math.PI / 2)) * (Math.PI / 2);
+					ctx.rotate(player.rotation);
+				} else ctx.rotate(player.dy * 0.05);
+
+				const skin = skins[selectedSkinIndex]; ctx.fillStyle = skin.color;
+				if (player.mode === 'CUBE') {
+					ctx.fillRect(-player.width / 2, -player.height / 2, player.width, player.height);
+					ctx.strokeStyle = '#000'; ctx.lineWidth = 3; ctx.strokeRect(-player.width / 2, -player.height / 2, player.width, player.height);
+					ctx.fillStyle = skin.detail; ctx.fillRect(-player.width / 4, -player.height / 4, player.width / 2, player.height / 2);
+				} else {
+					ctx.beginPath(); ctx.moveTo(-20, -15); ctx.lineTo(25, 0); ctx.lineTo(-20, 15); ctx.closePath(); ctx.fill(); ctx.stroke();
+					ctx.fillStyle = skin.detail; ctx.beginPath(); ctx.arc(-5, 0, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+				}
+				ctx.restore();
+
+				// RENDERIZADO DESDE EL DICCIONARIO
+				for (let i = 0; i < activeObjects.length; i++) {
+					let obj = activeObjects[i]; let screenX = obj.x - cameraX;
+					if (screenX > -100 && screenX < canvas.width + 100) {
+						// Calcula Y base (restando yOffset proporcionado por el editor)
+						let drawY = groundY - (obj.yOffset || 0);
+
+						// Llama a la lógica universal
+						if (ObjectDictionary[obj.type]) {
+							ObjectDictionary[obj.type].draw(ctx, screenX, drawY, obj);
+							ObjectDictionary[obj.type].collide(player, screenX, drawY, obj);
+						}
+					}
+				}
+			}
+			else {
+				// PANTALLAS DE FIN
+				ctx.fillStyle = 'rgba(0, 0, 0, 0.75)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+				ctx.fillStyle = 'white'; ctx.font = 'bold 48px sans-serif'; ctx.textAlign = 'center';
+				ctx.fillText(gameState === 'VICTORY' ? '¡NIVEL COMPLETADO!' : '¡HAS CHOCADO!', canvas.width / 2, canvas.height / 2 - 20);
+				ctx.font = '24px sans-serif'; ctx.fillStyle = '#f1c40f';
+				ctx.fillText('Clic/Espacio para volver al menú', canvas.width / 2, canvas.height / 2 + 20);
+			}
+			animationId = requestAnimationFrame(gameLoop);
+		}
+
+		buildSkinSelector(); showMenu();
+	</script>
+</body>
+
+</html>

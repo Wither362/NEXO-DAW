@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+	<base target="_top">
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+	<style>
+		/* VARIABLES CSS PARA FÁCIL PERSONALIZACIÓN DEL LAYOUT */
+		:root {
+			--bg-dark: #0b0b1a;
+			--bg-panel: #1a1a2e;
+			--accent: #f1c40f;
+			--text: #ecf0f1;
+			--border: #03045e;
+			--btn-bg: #2c3e50;
+			--btn-hover: #34495e;
+		}
+
+		body {
+			margin: 0;
+			padding: 0;
+			background-color: var(--bg-dark);
+			color: var(--text);
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+			display: flex;
+			flex-direction: column;
+			height: 100vh;
+			overflow: hidden;
+			user-select: none;
+		}
+
+		/* LAYOUT PRINCIPAL */
+		#top-bar {
+			display: flex;
+			justify-content: space-between;
+			padding: 10px 20px;
+			background: var(--bg-panel);
+			border-bottom: 2px solid var(--border);
+			z-index: 10;
+		}
+
+		#main-workspace {
+			display: flex;
+			flex-grow: 1;
+			position: relative;
+			overflow: hidden;
+		}
+
+		#left-tools {
+			width: 70px;
+			background: var(--bg-panel);
+			border-right: 2px solid var(--border);
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			padding-top: 10px;
+			gap: 10px;
+			overflow-y: auto;
+		}
+
+		#canvas-container {
+			flex-grow: 1;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			position: relative;
+			background: #000;
+			overflow: hidden;
+		}
+
+		canvas {
+			background-color: #0077b6;
+			touch-action: none;
+		}
+
+		/* touch-action: none es vital para móviles */
+
+		#right-properties {
+			width: 200px;
+			background: var(--bg-panel);
+			border-left: 2px solid var(--border);
+			padding: 15px;
+			display: flex;
+			flex-direction: column;
+			gap: 15px;
+		}
+
+		/* CONTROLES MÓVILES (Ocultos en escritorio, pero usables) */
+		#mobile-controls {
+			display: flex;
+			justify-content: center;
+			gap: 10px;
+			padding: 10px;
+			background: var(--bg-panel);
+			border-top: 2px solid var(--border);
+		}
+
+		/* COMPONENTES UI */
+		.tool-btn {
+			width: 50px;
+			height: 50px;
+			background-color: var(--btn-bg);
+			border: 2px solid transparent;
+			border-radius: 5px;
+			cursor: pointer;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			font-size: 20px;
+			transition: 0.2s;
+		}
+
+		.tool-btn.active {
+			border-color: var(--accent);
+			box-shadow: 0 0 10px rgba(241, 196, 15, 0.5);
+		}
+
+		.btn {
+			background: #27ae60;
+			border: none;
+			color: white;
+			padding: 8px 15px;
+			border-radius: 5px;
+			cursor: pointer;
+			font-weight: bold;
+		}
+
+		.btn.danger {
+			background: #e74c3c;
+		}
+
+		.btn.edit-mode {
+			background: #8e44ad;
+		}
+
+		.btn.drag-mode {
+			background: #dab308;
+		}
+
+		.btn.fullscreen {
+			background: #9192cb;
+		}
+
+		.prop-group {
+			display: flex;
+			flex-direction: column;
+			gap: 5px;
+			font-size: 14px;
+		}
+
+		input[type="number"] {
+			padding: 5px;
+			background: var(--btn-bg);
+			color: white;
+			border: 1px solid var(--border);
+			border-radius: 3px;
+		}
+	</style>
+</head>
+
+<body>
+
+	<div id="top-bar">
+		<div>
+			<button class="btn" id="mode-btn" onclick="changeMode()">MODE: BUILD</button>
+			<button class="btn edit-mode" onclick="toggleGridSnap()">SNAP: ON</button>
+			<button class="btn drag-mode" onclick="toggleAllowDrag()">DRAG: OFF</button>
+		</div>
+		<div style="font-family: monospace;">Cam X: <span id="cam-x">0</span></div>
+		<div style="display: flex; gap: 10px;">
+			<input type="text" id="level_name" placeholder="Level Name">
+			<button class="btn fullscreen" onclick="document.body.requestFullscreen().catch(err => {alert(`Error de la pantalla completa: ${err.message}`);})">🔳</button>
+			<button class="btn" onclick="saveProject()">Guardar Progreso</button>
+			<button class="btn edit-mode" onclick="exportLevel()">Exportar JSON</button>
+		</div>
+	</div>
+
+	<div id="main-workspace">
+		<div id="left-tools">
+			<div class="tool-btn active" onclick="selectTool('spike')" id="tool-spike">🔺</div>
+			<div class="tool-btn" onclick="selectTool('block')" id="tool-block">⬛</div>
+			<div class="tool-btn" onclick="selectTool('yellow_pad')" id="tool-yellow_pad">🟨</div>
+			<div class="tool-btn" onclick="selectTool('coin')" id="tool-coin">🟡</div>
+			<div class="tool-btn" onclick="selectTool('portal_ship')" id="tool-portal_ship">🚀</div>
+		</div>
+
+		<div id="canvas-container">
+			<canvas id="editorCanvas" width="800" height="400"></canvas>
+		</div>
+
+		<div id="right-properties">
+			<h3>Propiedades</h3>
+			<div id="no-selection-msg">Ningún objeto seleccionado.</div>
+
+			<div id="selection-panel" style="display: none; flex-direction: column; gap: 10px;">
+				<div class="prop-group">
+					<label>Tipo:</label>
+					<input type="text" id="prop-type" disabled>
+				</div>
+				<div class="prop-group">
+					<label>X:</label>
+					<input type="number" id="prop-x" onchange="updateSelectedObject()">
+				</div>
+				<div class="prop-group">
+					<label>Y:</label>
+					<input type="number" id="prop-y" onchange="updateSelectedObject()">
+				</div>
+				<button class="btn danger" onclick="deleteSelected()">Eliminar</button>
+			</div>
+		</div>
+	</div>
+
+	<div id="mobile-controls">
+		<button class="btn tool-btn" onclick="moveCamera(-50)">◀️</button>
+		<button class="btn tool-btn" onclick="moveCamera(50)">▶️</button>
+		<span style="margin: 0 20px;">|</span>
+		<button class="btn tool-btn" onclick="nudgeSelected(0, 10)">⬆️</button>
+		<button class="btn tool-btn" onclick="nudgeSelected(0, -10)">⬇️</button>
+		<button class="btn tool-btn" onclick="nudgeSelected(-10, 0)">⬅️</button>
+		<button class="btn tool-btn" onclick="nudgeSelected(10, 0)">➡️</button>
+	</div>
+
+	<script>
+		/** @type {HTMLCanvasElement} */
+		const canvas = document.querySelector('canvas');
+		/** @type {CanvasRenderingContext2D} */
+		const ctx = canvas.getContext('2d');
+
+		// --- ESTADO GLOBAL ---
+		/** Define el tamaño de la grid, y por tanto, el tamaño por defecto de los bloques determinados. */
+		const gridSize = 40;
+		const groundHeight = 60;
+		const groundY = canvas.height - groundHeight;
+
+		let cameraX = 0;
+		/** @type { {level_name: string, objects: [{ type: string, x: number, yOffset: number, width: number, height: number }]} }*/
+		let levelData = {
+			level_name: "",
+			objects: [],
+		}
+
+		let editorMode = 'BUILD'; // 'BUILD' o 'EDIT'
+		let currentTool = 'spike';
+		let snapToGrid = true;
+		/** Permite arrastrar en el modo BUILD*/
+		let allowDrag = false;
+
+		// Variables de Selección y Arrastre
+		/** Objeto que el usuario está SELECCIONANDO EN EL MODO EDIT*/
+		let selectedObj = null;
+		let isMouseDown = false;
+		let isDragging = false;
+		let dragOffsetX = 0;
+		let dragOffsetY = 0;
+
+
+		// --- SISTEMA DE GUARDADO LOCAL ---
+		function saveProject() {
+			localStorage.setItem('gd_level_wip', JSON.stringify(levelData));
+			alert("Progreso guardado en el navegador.");
+		}
+
+		function loadProject() {
+			const saved = localStorage.getItem('gd_level_wip');
+			if (saved) {
+				levelData = JSON.parse(saved);
+			}
+		}
+
+		/**
+		 * Desactiva el menú izquierdo de selección de objeto
+		*/
+		function deactivateObjectsMenu() {
+			document.querySelectorAll('#left-tools .tool-btn').forEach(btn => btn.classList.remove('active'));
+		}
+
+		// --- CONTROLES DE INTERFAZ ---
+		function selectTool(toolName) {
+			if (editorMode !== 'BUILD')
+				setMode('BUILD');
+			currentTool = toolName;
+			deactivateObjectsMenu();
+			document.getElementById('tool-' + toolName).classList.add('active');
+		}
+
+		/**
+		 * Determina el modo de edición
+		 * @param {string} mode - BUILD / EDIT
+		*/
+		function setMode(mode) {
+			editorMode = mode;
+			const btn = document.getElementById('mode-btn');
+			if (mode === 'BUILD') {
+				btn.innerText = "MODE: BUILD";
+				btn.style.background = "#27ae60";
+				selectedObj = null;
+				updatePropertiesPanel();
+			} else if (mode === 'EDIT') {
+				btn.innerText = "MODE: EDIT";
+				btn.style.background = "#8e44ad";
+				deactivateObjectsMenu();
+			} else if (mode === 'DELETE') {
+				btn.innerText = "MODE: DELETE";
+				btn.style.background = "#e74c3c";
+				deactivateObjectsMenu();
+			}
+		}
+
+		/**
+		 * Cambia entre BUILD MODE, EDIT MODE y DELETE MODE
+		*/
+		function changeMode() {
+			if (editorMode === 'BUILD')
+				setMode('EDIT');
+			else if (editorMode === 'EDIT')
+				setMode('DELETE');
+			else if (editorMode === 'DELETE')
+				setMode('BUILD');
+		}
+		/**
+		 * Cambia entre SNAP ON y SNAP OFF
+		*/
+		function toggleGridSnap() {
+			snapToGrid = !snapToGrid;
+			event.target.innerText = snapToGrid ? "SNAP: ON" : "SNAP: OFF";
+		}
+		function toggleAllowDrag() {
+			allowDrag = !allowDrag;
+			event.target.innerText = allowDrag ? "DRAG: ON" : "DRAG: OFF";
+		}
+		/**
+		 * Mueve la cámara horizontalmente
+		 * @param {number} amountX - Cantidad a mover horizontalmente.
+		*/
+		function moveCamera(amountX) {
+			cameraX = Math.max(0, cameraX + amountX);
+			document.getElementById('cam-x').innerText = cameraX;
+			render();
+		}
+
+		// --- LÓGICA DE PROPIEDADES ---
+		function updatePropertiesPanel() {
+			const panel = document.getElementById('selection-panel');
+			const msg = document.getElementById('no-selection-msg');
+			if (selectedObj) {
+				panel.style.display = 'flex';
+				msg.style.display = 'none';
+				document.getElementById('prop-type').value = selectedObj.type;
+				document.getElementById('prop-x').value = selectedObj.x;
+				document.getElementById('prop-y').value = selectedObj.yOffset;
+			} else {
+				panel.style.display = 'none';
+				msg.style.display = 'block';
+			}
+		}
+
+		function updateSelectedObject() {
+			if (!selectedObj)
+				return;
+			selectedObj.x = parseInt(document.getElementById('prop-x').value) || 0;
+			selectedObj.yOffset = parseInt(document.getElementById('prop-y').value) || 0;
+			render();
+		}
+
+		function deleteObject(object) {
+			levelData = levelData.objects.filter(obj => obj !== selectedObj);
+			render();
+		}
+
+		function deleteSelected() {
+			if (!selectedObj)
+				return;
+			levelData = levelData.objects.filter(obj => obj !== selectedObj);
+			selectedObj = null;
+			updatePropertiesPanel();
+			render();
+		}
+
+		function nudgeSelected(dx, dy) {
+			if (!selectedObj)
+				return;
+			selectedObj.x += dx;
+			selectedObj.yOffset += dy;
+			updatePropertiesPanel(); render();
+		}
+
+		// --- INTERACCIÓN CON RATÓN / TÁCTIL ---
+		function getPointerPos(e) {
+			const rect = canvas.getBoundingClientRect();
+			const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+			const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+			// Escalar coordenadas si el canvas de la pantalla difiere de los píxeles internos
+			const scaleX = canvas.width / rect.width;
+			const scaleY = canvas.height / rect.height;
+
+			return {
+				x: (clientX - rect.left) * scaleX,
+				y: (clientY - rect.top) * scaleY
+			};
+		}
+
+		// Buscar objeto clickeado (Iteramos al revés para seleccionar el que está encima visualmente)
+		function findObjectAt(x, y) {
+			const mapX = x + cameraX;
+			for (let i = levelData.objects.length - 1; i >= 0; i--) {
+				let obj = levelData.objects[i];
+				let drawY = groundY - obj.yOffset;
+				let topY = drawY - obj.height;
+
+				if (mapX >= obj.x && mapX <= obj.x + obj.width && y >= topY && y <= drawY) {
+					return obj;
+				}
+			}
+			return null;
+		}
+
+		/**
+		 * Crea un nuevo objeto
+		 * @param {string} objectType
+		 * @param {number} xPos
+		 * @param {number} yOffset
+		*/
+		function addNewObject(objectType, xPos, yOffset) {
+			levelData.objects.push({
+				type: objectType,
+				x: xPos,
+				yOffset: yOffset,
+				width: gridSize,
+				height: gridSize
+			});
+		}
+
+		/**
+		 * Devuelve la posición por defecto que se usa cuando el usuario crea un nuevo objeto.
+		 * @param {HTMLCanvasElement} canvas - El canvas.
+		*/
+		function getNewObjectSnapDefaultPosition(canvas) {
+			const pos = getPointerPos(canvas);
+			const mapX = pos.x + cameraX;
+
+			let gridX = Math.floor(mapX / gridSize) * gridSize;
+			let gridY = Math.round(pos.y / gridSize) * gridSize;
+			let yOffset = groundY - gridY - (gridSize / 2);
+
+			return { xPos: gridX, yOffset: yOffset };
+		}
+
+		/**
+		 * Exhaustiva eliminación "por si acaso"
+		 * Devuelve Verdadero/Falso según si ha eliminado o no ha eliminado objetos.
+		*/
+		function deleteObjectAtPointer(canvas) {
+			const pointerPos = getPointerPos(canvas);
+			let clickedObj = findObjectAt(pointerPos.x, pointerPos.y);
+			for (let i = 1; i >= 0; i -= 1) {
+				if (clickedObj) {
+					selectedObj = clickedObj;
+					deleteSelected();
+					return true;
+				}
+				else {
+					clickedObj = getNewObjectSnapDefaultPosition(canvas);
+				}
+			}
+			return false;
+		}
+
+		/**
+		 * Cuando el jugador pulsa con el ratón/dedo
+		 * @param {HTMLCanvasElement} e - El canvas.
+		*/
+		function handleInputStart(e) {
+			isMouseDown = true;
+
+			const pointerPos = getPointerPos(e);
+			const objectPos = getNewObjectSnapDefaultPosition(e);
+			const mapX = pointerPos.x + cameraX;
+
+			let shouldRender = false;
+
+			if (editorMode === 'BUILD') {
+				if (pointerPos.y >= groundY) return;
+				// Evitar solapamientos exactos
+				levelData = levelData.objects.filter(obj => !(obj.x === objectPos.xPos && obj.yOffset === objectPos.yOffset));
+				addNewObject(currentTool, objectPos.xPos, objectPos.yOffset);
+				shouldRender = true;
+			}
+			else if (editorMode === 'EDIT') {
+				const clickedObj = findObjectAt(pointerPos.x, pointerPos.y);
+				if (clickedObj) {
+					selectedObj = clickedObj;
+					isDragging = true;
+					dragOffsetX = mapX - selectedObj.x;
+					// Calcular la diferencia Y desde la base del objeto
+					let drawY = groundY - selectedObj.yOffset;
+					dragOffsetY = pointerPos.y - drawY;
+				} else {
+					selectedObj = null;
+				}
+				updatePropertiesPanel();
+				shouldRender = true;
+			} else if (editorMode === 'DELETE') {
+				deleteObjectAtPointer(e);
+				shouldRender = false;
+			}
+
+			if (shouldRender)
+				render();
+		}
+
+		/**
+		 * Maneja la edición cuando el usuario mueve el ratón/cursor/dedo.
+		 * O SEA, DRAG/ARRASTRE.
+		 * @param {HTMLCanvasElement} e - El canvas
+		*/
+		function handleInputMove(e) {
+			// Si al usuario no le gusta arrastrar
+			if (!allowDrag)
+				return;
+
+			// Si el usuario está en modo BUILD, pero con el ARRASTRE desactivado o con el SNAP desactivado / etc
+			if (!(editorMode === 'BUILD' && snapToGrid && isMouseDown) && !(editorMode === 'EDIT' && selectedObj && isDragging) && !(editorMode === 'DELETE' && isMouseDown))
+				return;
+
+			// Evitar el scroll en dispositivos móviles al arrastrar.
+			e.preventDefault();
+
+			const pointerPos = getPointerPos(e);
+
+			let shouldRender = false;
+
+			// EDIT DRAG - Arrastrar el objeto seleccionado
+			if (editorMode === 'EDIT') {
+				const mapX = pointerPos.x + cameraX;
+
+				let newX = mapX - dragOffsetX;
+				let newDrawY = pointerPos.y - dragOffsetY;
+				let newYOffset = groundY - newDrawY;
+				if (snapToGrid) {
+					selectedObj.x = Math.round(newX / gridSize) * gridSize;
+					selectedObj.yOffset = Math.round(newYOffset / gridSize) * gridSize;
+				} else {
+					selectedObj.x = newX;
+					selectedObj.yOffset = newYOffset;
+				}
+				shouldRender = true;
+			}
+			// BUILD SNAP DRAG MODE - Crear nuevos objetos según el usuario arrastra el ratón/dedo
+			else if (editorMode === 'BUILD') {
+				const objectPos = getNewObjectSnapDefaultPosition(e);
+
+				if (pointerPos.y >= groundY) return;
+				// Evitar solapamientos exactos
+				levelData = levelData.objects.filter(obj => !(obj.x === objectPos.xPos && obj.yOffset === objectPos.yOffset));
+				addNewObject(currentTool, objectPos.xPos, objectPos.yOffset);
+				shouldRender = true;
+			}
+			else if (editorMode === 'DELETE') {
+				selectedObj = null;
+				deleteObjectAtPointer(e);
+				shouldRender = false;
+			}
+
+			updatePropertiesPanel();
+			if (shouldRender)
+				render();
+		}
+
+		function handleInputEnd(e) {
+			isDragging = false;
+			isMouseDown = false;
+		}
+
+		canvas.addEventListener('mousedown', handleInputStart);
+		canvas.addEventListener('mousemove', handleInputMove);
+		canvas.addEventListener('mouseup', handleInputEnd);
+		canvas.addEventListener('mouseleave', handleInputEnd);
+
+		canvas.addEventListener('touchstart', (e) => {
+			e.preventDefault();
+			handleInputStart(e);
+		}, { passive: false });
+		canvas.addEventListener('touchmove', handleInputMove, { passive: false });
+		canvas.addEventListener('touchend', handleInputEnd);
+
+		// Controles de teclado
+		window.addEventListener('keydown', e => {
+			if (e.key === 'ArrowRight' || e.key === 'd')
+				moveCamera(20);
+			if (e.key === 'ArrowLeft' || e.key === 'a')
+				moveCamera(-20);
+			if (e.key === 'Delete' || e.key === 'Backspace')
+				deleteSelected();
+		});
+
+		// --- RENDERIZADO ---
+		function render() {
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+			ctx.fillStyle = '#023e8a';
+			ctx.fillRect(0, groundY, canvas.width, groundHeight);
+
+			ctx.fillStyle = '#fff';
+			ctx.fillRect(0, groundY, canvas.width, 4);
+
+			ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+			ctx.lineWidth = 1;
+			const offsetX = -(cameraX % gridSize);
+			ctx.beginPath();
+			for (let x = offsetX; x < canvas.width; x += gridSize) {
+				ctx.moveTo(x, 0);
+				ctx.lineTo(x, groundY);
+			}
+			for (let y = groundY; y >= 0; y -= gridSize) {
+				ctx.moveTo(0, y);
+				ctx.lineTo(canvas.width, y);
+			}
+			ctx.stroke();
+
+			levelData.objects.forEach(obj => {
+				const screenX = obj.x - cameraX;
+				const drawY = groundY - obj.yOffset;
+
+				if (screenX > -gridSize * 2 && screenX < canvas.width + gridSize) {
+					if (obj.type === 'spike') {
+						ctx.fillStyle = '#e74c3c'; ctx.beginPath();
+						ctx.moveTo(screenX + obj.width / 2, drawY - obj.height);
+						ctx.lineTo(screenX + obj.width, drawY);
+						ctx.lineTo(screenX, drawY);
+						ctx.closePath();
+						ctx.fill();
+						ctx.stroke();
+					} else if (obj.type === 'block') {
+						ctx.fillStyle = '#34495e';
+						ctx.fillRect(screenX, drawY - obj.height, obj.width, obj.height);
+						ctx.strokeStyle = '#ecf0f1';
+						ctx.strokeRect(screenX, drawY - obj.height, obj.width, obj.height);
+					} else if (obj.type === 'yellow_pad') {
+						ctx.fillStyle = '#f1c40f';
+						ctx.fillRect(screenX, drawY - 10, obj.width, 10);
+					} else if (obj.type === 'portal_ship') {
+						ctx.fillStyle = 'rgba(155, 89, 182, 0.5)';
+						ctx.fillRect(screenX, drawY - 100, 40, 100);
+					} else if (obj.type === 'coin') {
+						ctx.fillStyle = '#f1c40f';
+						ctx.beginPath();
+						ctx.arc(screenX + obj.width / 2, drawY - obj.height / 2, 15, 0, Math.PI * 2);
+						ctx.fill();
+					}
+
+					// Resaltado si está seleccionado
+					if (obj === selectedObj) {
+						ctx.strokeStyle = '#00ff00';
+						ctx.lineWidth = 2;
+						ctx.strokeRect(screenX - 2, drawY - obj.height - 2, obj.width + 4, obj.height + 4);
+					}
+				}
+			});
+		}
+
+		function exportLevel() {
+			levelData.objects.sort((a, b) => a.x - b.x);
+			const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(levelData));
+			const anchor = document.createElement('a');
+			anchor.setAttribute("href", dataStr);
+			anchor.setAttribute("download", `${String(document.getElementById("level_name").value)}.json`);
+			document.body.appendChild(anchor);
+			anchor.click();
+			anchor.remove();
+		}
+
+		// Inicialización
+		loadProject();
+		render();
+	</script>
+</body>
+
+</html>

@@ -1,0 +1,2505 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+	<style>
+		:root {
+			--bg: #121220;
+			--panel: #1e1e32;
+			--border: #3a3a5c;
+			--accent: #e67e22;
+			--text: #e0e0e0;
+		}
+
+		body {
+			margin: 0;
+			background: var(--bg);
+			color: var(--text);
+			font-family: 'Segoe UI', sans-serif;
+			display: flex;
+			flex-direction: column;
+			height: 100vh;
+			overflow: hidden;
+			user-select: none;
+		}
+
+		#toolbar {
+			display: flex;
+			gap: 8px;
+			padding: 10px;
+			background: var(--panel);
+			border-bottom: 2px solid var(--border);
+			align-items: center;
+			z-index: 10;
+			flex-wrap: wrap;
+		}
+
+		.btn {
+			background: #27ae60;
+			border: none;
+			color: white;
+			padding: 5px 8px;
+			border-radius: 4px;
+			cursor: pointer;
+			font-weight: bold;
+			font-size: 12px;
+			text-align: center;
+		}
+
+		.btn:hover {
+			filter: brightness(1.2);
+		}
+
+		.btn.stop {
+			background: #c0392b;
+		}
+
+		.btn.blue {
+			background: #2980b9;
+		}
+
+		.btn.purple {
+			background: #8e44ad;
+		}
+
+		input,
+		select {
+			background: #000;
+			color: #0f0;
+			border: 1px solid var(--border);
+			padding: 4px;
+			font-family: monospace;
+			font-size: 12px;
+		}
+
+		#workspace {
+			display: flex;
+			flex-grow: 1;
+			overflow: hidden;
+		}
+
+		#left-panel {
+			width: 350px;
+			display: flex;
+			flex-direction: column;
+			border-right: 2px solid var(--border);
+			background: var(--panel);
+		}
+
+		#tracks-container {
+			flex-grow: 1;
+			overflow-y: auto;
+			padding-bottom: 50px;
+		}
+
+		.track-card {
+			padding: 10px;
+			border-bottom: 1px solid var(--border);
+			position: relative;
+		}
+
+		.track-card.active {
+			border-left: 4px solid var(--accent);
+			background: rgba(230, 126, 34, 0.1);
+		}
+
+		.mixer-strip {
+			display: flex;
+			gap: 5px;
+			font-size: 10px;
+			margin-top: 5px;
+			background: rgba(0, 0, 0, 0.2);
+			padding: 5px;
+			border-radius: 4px;
+			flex-wrap: wrap;
+		}
+
+		.knob-group {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			flex: 1;
+			min-width: 40px;
+		}
+
+		input[type="range"] {
+			width: 100%;
+			accent-color: var(--accent);
+		}
+
+		.t-del {
+			position: absolute;
+			right: 5px;
+			top: 5px;
+			background: red;
+			color: white;
+			border: none;
+			border-radius: 3px;
+			cursor: pointer;
+		}
+
+		#master-rack {
+			padding: 10px;
+			background: #111;
+			border-top: 2px solid var(--accent);
+			font-size: 11px;
+		}
+
+		/*
+		#pr-wrapper {
+			flex-grow: 1;
+			display: flex;
+			flex-direction: column;
+			position: relative;
+			overflow: hidden;
+		}
+		*/
+
+		#pr-wrapper {
+			flex-grow: 1;
+			display: flex;
+			overflow: hidden;
+		}
+
+		#timeline {
+			position: sticky;
+			top: 0;
+			height: 20px;
+			background: #222;
+			border-bottom: 1px solid var(--border);
+			z-index: 10;
+			display: flex;
+			overflow: visible;
+			white-space: nowrap;
+		}
+
+		#piano-roll {
+			flex-grow: 1;
+			display: flex;
+			overflow: auto;
+			position: relative;
+		}
+
+		#keys {
+			min-width: 60px;
+			background: #222;
+			position: sticky;
+			left: 0;
+			z-index: 5;
+			border-right: 2px solid #000;
+		}
+
+		.key {
+			height: 16px;
+			border-bottom: 1px solid #111;
+			display: flex;
+			justify-content: flex-end;
+			align-items: center;
+			padding-right: 4px;
+			font-size: 9px;
+			box-sizing: border-box;
+		}
+
+		.key.b {
+			background: #111;
+			color: #555;
+		}
+
+		.key.w {
+			background: #eee;
+			color: #222;
+		}
+
+		#grid {
+			position: relative;
+		}
+
+		canvas {
+			display: block;
+		}
+
+		/* Modales */
+		.modal {
+			display: none;
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background: rgba(0, 0, 0, 0.8);
+			z-index: 100;
+			justify-content: center;
+			align-items: center;
+		}
+
+		.modal-content {
+			background: var(--panel);
+			padding: 20px;
+			border-radius: 8px;
+			border: 2px solid var(--accent);
+			max-width: 600px;
+			width: 100%;
+			display: flex;
+			flex-direction: column;
+			gap: 10px;
+		}
+
+		textarea {
+			height: 150px;
+			background: #000;
+			color: #0f0;
+			font-family: monospace;
+		}
+
+		/* NUEVO CSS: Solución de botones, Iconos de imagen y Modo Batería */
+		.track-header {
+			display: flex;
+			gap: 8px;
+			align-items: center;
+			justify-content: space-between;
+			flex-wrap: wrap;
+		}
+
+		.track-controls {
+			display: flex;
+			gap: 5px;
+			align-items: center;
+		}
+
+		.mixer-input::-webkit-outer-spin-button,
+		.mixer-input::-webkit-inner-spin-button {
+			-webkit-appearance: none;
+			margin: 0;
+		}
+
+		/* Ocultar flechas en Firefox */
+		.mixer-input {
+			background: transparent;
+			border: 1px solid var(--border);
+			color: var(--text);
+			width: 45px;
+			text-align: center;
+			border-radius: 3px;
+		}
+
+		.track-icon {
+			width: 30px;
+			height: 30px;
+			border-radius: 4px;
+			object-fit: cover;
+			cursor: pointer;
+			background: #000;
+			border: 1px solid var(--accent);
+		}
+
+		.template-tag {
+			background: #2980b9;
+			padding: 2px 5px;
+			border-radius: 3px;
+			font-size: 9px;
+			margin-right: 2px;
+		}
+
+		/* Cambiamos el cursor para indicar que es clickeable */
+		.track-toggle {
+			cursor: pointer;
+			user-select: none;
+			font-weight: bold;
+		}
+
+		/* El timeline ahora vive dentro del contenedor que hace scroll */
+		#grid-container {
+			display: flex;
+			flex-direction: column;
+			position: relative;
+		}
+
+		/* Solución real al colapso de pistas */
+		.track-card.collapsed .mixer-strip,
+		.track-card.collapsed .track-controls {
+			display: none !important;
+		}
+
+		.add-track-btn-container {
+			padding: 15px;
+			text-align: center;
+			border-top: 2px dashed var(--border);
+		}
+	</style>
+</head>
+
+<body>
+	<div id="toolbar">
+		<button class="btn" id="play-btn" title="Plays or Pauses the DAW Player">▶ PLAY</button>
+		<button class="btn stop" id="stop-btn">⏹ STOP</button>
+
+		<div style="display:flex; gap:2px; margin-right: 10px;">
+			<button class="btn blue" id="btn-undo" title="Undo (Ctrl+Z)">↩️</button>
+			<button class="btn blue" id="btn-redo" title="Redo (Ctrl+Y)">↪️</button>
+		</div>
+
+		<label>BPM: <input type="number" id="bpm" value="128" style="width: 37px;"></label>
+		<label>Steps: <input type="number" id="steps" value="64" style="width: 38px;" placeholder="64"></label>
+		<input type="text" id="song_name" style="width: 80px;" placeholder="Song Name" title="The name of the song or project">
+
+
+		<label style="font-size: 10px;">Snap:
+			<select id="grid-snap" class="btn blue" style="padding: 1px;">
+				<option value="4">Quarter (1/4)</option>
+				<option value="2">Eighth note (1/8)</option>
+				<option value="1" selected>Sixteenth note (1/16)</option>
+				<option value="0.5">Thirty-second note (1/32)</option>
+				<option value="0.25">Sixty-fourth note (1/64)</option>
+			</select>
+		</label>
+
+		<button class="btn blue" id="save-template" title="Saves or makes a new template">Save Template</button>
+		<select class="btn blue" id="user-templates" style="width: 120px;" title="A template is a predefined set of notes. Useful for making song or drums patterns">
+			<option value="">Template</option>
+		</select>
+
+		<div class="control-group" title="Action to execute when touching/clicking the piano roll">
+			<select id="mobile-tool-select">
+				<option value="draw" title="Add new notes or edit the duration of existing ones">Draw</option>
+				<option value="select" title="Allows for selection drag">Edit</option>
+				<option value="pan" title="Adjust existing notes's pan">Adjust Pan</option>
+				<option value="delete" title="Delete notes">Delete</option>
+			</select>
+		</div>
+
+		<label style="font-size:10px;"><input type="checkbox" id="show-wave" checked>Waveforms</label>
+
+		<div style="width: 2px; height: 20px; background: var(--border); margin: 0 3px;"></div>
+
+		<label class="btn blue" style="cursor: pointer;">
+			Import Project<input type="file" id="load-project" style="display:none;" accept=".json"></label>
+		<button class="btn blue" id="save-project">
+			Save Project</button>
+
+		<label class="btn purple" style="cursor:pointer;" title="Import .mid file">
+			Importar MIDI
+			<input type="file" id="import-midi" accept=".mid,.midi" style="display:none;">
+		</label>
+		<button class="btn purple" id="export-midi" title="Export project to .mid file">
+			Exportar MIDI</button>
+
+		<label class="btn purple" style="cursor: pointer;" title="Allows for importing JSGD Player files in case you didn't save the project as a Project File">
+			Import GD<input type="file" id="import-gd" style="display:none;" accept=".json"></label>
+
+		<!--<div style="flex-grow: 1;"></div>-->
+
+		<button class="btn purple" id="export-gd" title="Exports this project so it can be used in the JSGD Player">
+			Save GD File</button>
+		<button class="btn" id="export-wav" style="background:#d35400" title="WAV is an audio filetype extension">
+			Save WAV</button>
+	</div>
+
+	<div id="workspace">
+		<div id="left-panel">
+			<div id="tracks-container"></div>
+			<div class="add-track-btn-container">
+				<button class="btn blue" id="add-track" style="width: 100%;" title="Adds a new track to the list of tracks of this project">New Track</button>
+			</div>
+
+			<div id="master-rack">
+				<b style="color:var(--accent)">MASTER BUS / CADENA DSP</b>
+				<div class="mixer-strip">
+					<div class="knob-group" title="General equalization of the tracks in Hz">
+						EQ (Hz)<input type="range" id="m-eq" min="500" max="20000" value="20000"></div>
+					<div class="knob-group" title="Compression of the tracks in dB">
+						Comp (dB)<input type="range" id="m-comp" min="-50" max="0" value="-12"></div>
+					<div class="knob-group" title="General reverb amount of the tracks">
+						Reverb<input type="range" id="m-rev" min="0" max="1" step="0.05" value="0.15"></div>
+				</div>
+			</div>
+		</div>
+
+		<div id="pr-wrapper">
+			<div id="piano-roll">
+				<div id="keys"></div>
+				<div id="grid-container">
+					<div id="timeline"></div>
+					<canvas id="canvas"></canvas>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div id="tool-modal" class="modal">
+		<div class="modal-content">
+			<div style="display:flex; justify-content:space-between;">
+				<h3 id="modal-title" style="margin:0; color:var(--accent);">Editor Avanzado</h3>
+				<button class="btn stop" id="delete-track" title="Closes this menu">X</button>
+			</div>
+
+			<div id="sampler-ui" style="display:none; flex-direction:column; gap:10px;">
+				<label class="btn blue">Load Audio File (WAV/MP3)<input type="file" id="load-audio" style="display:none;" accept="audio/*"></label>
+				<canvas id="wave-canvas" width="560" height="100" style="background:#000; border:1px solid var(--border);"></canvas>
+				<div style="display:flex; gap:10px;">
+					<label>Trim Inicio (s): <input type="number" id="samp-start" step="0.01" value="0"></label>
+					<label>Trim Fin (s): <input type="number" id="samp-end" step="0.01" value="0"></label>
+				</div>
+				<button class="btn blue" id="open-library">Open Cloud Library</button>
+			</div>
+
+			<div id="code-ui" style="display:none; flex-direction:column; gap:10px;">
+				<div style="background:#222; padding:10px; font-size:11px; border-radius:4px; max-height:100px; overflow-y:auto;">
+					<b style="color:var(--accent);">Documentación API v1.0.0 para JS Plugins:</b><br>
+					El sistema te inyecta 5 variables automáticamente:<br>
+					- <code>ctx</code>: AudioContext actual (Úsalo para crear nodos <i>ctx.createOscillator()</i>)<br>
+					- <code>freq</code>: Frecuencia en Hz para la nota del piano roll.<br>
+					- <code>t</code>: Tiempo de inicio exacto (AudioContext time).<br>
+					- <code>dur</code>: Duración calculada en segundos según el tempo y los bloques dibujados.<br>
+					- <code>gainNode</code>: <b>IMPORTANTE</b>. Debes conectar tu último efecto/oscilador aquí (ej:
+					<code>osc.connect(gainNode)</code>) para que el volumen y el EQ del DAW funcionen.<br>
+					<i>No olvides hacer <code>tuOscilador.start(t)</code> y <code>tuOscilador.stop(t + dur)</code>.</i>
+				</div>
+				<textarea id="custom-code" style="height: 250px;"></textarea>
+				<button class="btn" id="save-and-compile">Save and Compile</button>
+			</div>
+		</div>
+	</div>
+
+	<div id="library-modal"
+		style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%); background:var(--panel); border:2px solid var(--accent); padding:20px; z-index:2000; color:white; width: 300px; max-height: 70vh; overflow-y: auto;">
+		<h3>Sample library (from the cloud)</h3>
+		<p style="font-size:11px; color:#aaa;">This files will only be downloaded on click.</p>
+		<div id="library-list" style="display:flex; flex-direction:column; gap:5px;"></div>
+		<button class="btn stop" id="close-library" style="margin-top:15px; width:100%;">Cerrar</button>
+	</div>
+
+	<div id="ctx-menu" style="display:none; position:fixed; background:var(--panel); border:1px solid var(--accent); border-radius:4px; z-index:1000; flex-direction:column; padding:5px; box-shadow: 0 4px 6px rgba(0,0,0,0.5);">
+		<button class="btn blue" id="ctx-copy" style="margin-bottom:2px;">Copy</button>
+		<button class="btn blue" id="ctx-dup" style="margin-bottom:2px;">Duplicate</button>
+		<button class="btn blue" id="ctx-split" style="margin-bottom:2px;">Split/Divide</button>
+		<button class="btn purple" id="ctx-color" style="margin-bottom:2px;">Change Color</button>
+		<button class="btn purple" id="ctx-pitch" style="margin-bottom:2px;">Change Pitch/Tone</button>
+		<button class="btn purple" id="ctx-move" style="margin-bottom:2px;">Move (Horizontal)</button>
+		<button class="btn purple" id="ctx-dur" style="margin-bottom:2px;">Change Duration</button>
+		<button class="btn purple" id="ctx-vol" style="margin-bottom:2px;">Own Volume</button>
+		<button class="btn purple" id="ctx-trigger" style="margin-bottom:2px;">Add Trigger (Auto)</button>
+		<button class="btn" id="ctx-play" style="margin-bottom:2px; background:#e67e22;">Play Selection</button>
+		<button class="btn stop" id="ctx-del">Delete</button>
+	</div>
+
+	<script>
+		window.addEventListener('beforeunload', () => {
+			clearTimeout(tid);
+		});
+
+		if (typeof google !== 'undefined' && google.script) {
+			google.script.host.setHeight(window.innerHeight);
+		}
+
+		/**
+		 * @typedef {Object} EQ
+		 * @property {number} low Ganancia de frecuencias bajas.
+		 * @property {number} mid Ganancia de frecuencias medias.
+		 * @property {number} high Ganancia de frecuencias altas.
+		*/
+
+		/**
+		 * @typedef {Object} Note
+		 * @property {number} r
+		 * @property {number} c
+		 * @property {number} d Duración de la nota (1, 1/4, 1/8...)
+		 * @property {number} p Panning (panorámica) de la nota (-1.0 = Izquierda, 0.0 = Centro, 1.0 = Derecha)
+		 * @property {number} vol Volumen individual de la nota (0.0 <-> 1.0)
+		 * @property {EQ} eq Equalización propia de la nota
+		*/
+
+		/**
+		 * @typedef {Object} TrackConfig
+		 * @property {string} id Identificador único de la pista.
+		 * @property {string} name Nombre de la pista (puede ser string o null).
+		 * @property {string} type Tipo de instrumento o generador de audio.
+		 * @property {string} group Grupo de pistas al que pertenece.
+		 * @property {string} iconImg Ruta o identificador de la imagen del icono.
+		 * @property {string} color Color hexadecimal o nombre para la UI.
+		 * @property {string} displayMode Modo de visualización en el editor (ej. 'piano', 'wave').
+		 * @property {number} vol Volumen principal (0.0 a 1.0, pero su máximo es 100.0).
+		 * @property {number} pan Panorámica estéreo (-1.0 izquierda a 1.0 derecha).
+		 * @property {number} att Tiempo de ataque del envolvente (ADSR).
+		 * @property {number} rel Tiempo de relajación del envolvente (ADSR).
+		 * @property {number} flt Frecuencia de corte del filtro.
+		 * @property {boolean} mute Muteo.
+		 * @property {boolean} solo Solo.
+		 * @property {EQ} eq Ecualizador general de 3 bandas.
+		 * @property {Note[]} notes Array de notas (actualmente vacío o no usado).
+		 * @property { [] } triggers
+		 * @property {null} sampleId ID de la muestra de audio cargada (null si es sintético).
+		 * @property {null} sampleBase64 Datos de la muestra en base64 (null si es sintético).
+		 * @property {string} customJS Código JavaScript personalizado para lógica de audio.
+		 * @property {number[]} trim Array de valores para recorte o ajuste de ganancia.
+		 */
+
+		/**
+		 * @typedef {Object} ProjectData
+		 * @property {string} name Nombre del proyecto.
+		 * @property {number} bpm Tempo del proyecto en beats por minuto.
+		 * @property {number} steps Número total de pasos en el secuenciador.
+		 * @property {TrackConfig[]} tracks Lista de configuraciones de las pistas.
+		 */
+
+		function capitalizeOnlyFirstLetter(str) {
+			return str.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+		}
+
+		// --- INTERFAZ GRAFICA (GUI) ---
+		const cvs = document.getElementById('canvas'), cCtx = cvs.getContext('2d');
+		const A_CTX = new (window.AudioContext || window.webkitAudioContext)();
+
+		let cvs_ready = false;
+		const checkCvsReady = setInterval(() => {
+			if (document.getElementById('canvas') && cvs.getContext) {
+				cvs_ready = true;
+				clearInterval(checkCvsReady);
+			}
+		}, 50);
+
+		// --- ARQUITECTURA DE DATOS (ESTADO) ---
+		/** @type {ProjectData} */
+		let s = {
+			name: "",
+			bpm: 128,
+			steps: 128,
+			tracks: [],
+		};
+
+		let undoStack = [];
+		let redoStack = [];
+		const MAX_HISTORY = 50; // Límite de pasos para no saturar la memoria RAM
+
+		function saveState() {
+			// Hacemos un clon profundo rápido convirtiéndolo a texto y lo guardamos
+			undoStack.push(JSON.stringify(s));
+			if (undoStack.length > MAX_HISTORY) undoStack.shift(); // Borramos el más antiguo si pasamos el límite
+			redoStack = []; // Al hacer una nueva acción, el futuro alternativo (redo) se borra
+		}
+
+		// Diccionario para almacenar buffers de audio crudos en memoria (no se exportan a JSON puro fácilmente sin Base64, se requiere re-carga)
+		const sampleBuffers = {};
+
+		const NOTES = ['B', 'A#', 'A', 'G#', 'G', 'F#', 'F', 'E', 'D#', 'D', 'C#', 'C'];
+		const OCTAVES = [6, 5, 4, 3, 2, 1];
+
+		/** track/pista actual*/
+		let actTrk = 0;
+
+		// Variables de Zoom y Estado del Ratón
+		let zoomX = 30; // Zoom horizontal (Ancho de nota)
+		let zoomY = 16; // Zoom vertical (Alto de nota)
+		let snapRes = 1; // División de notas
+
+		// --- SISTEMA DE SELECCIÓN Y PORTAPAPELES ---
+		let isDraggingSelection = false;
+		let isDrawing = false;
+		let dragStartC = 0, dragStartR = 0;
+		let originalSel = [];
+		/** @type { Note[] } Notas seleccionadas */
+		let selection = [];
+		/** @type { Note[] } Notas copiadas */
+		let clipboard = [];
+		let isSelecting = false;
+		let selBox = { x: 0, y: 0, w: 0, h: 0 };
+
+		// --- GESTIÓN DE PISTAS ---
+
+		// NUEVO OBJETO TRACK: Implementa Grupos, Iconos, Color de Pista y EQ Avanzado
+		/**
+		 * @param {string} name Nombre de la pista
+		 * @param {string} type Tipo de pista
+		 * @returns {TrackConfig}
+		*/
+		function createTrackObj(name, type) {
+			return {
+				id: Date.now() + Math.random(), name: name, type: type,
+				group: '', iconImg: '', color: '#3498db', displayMode: 'melodic',
+				vol: 0.7, pan: 0, att: 0.01, rel: 0.2, flt: 20000,
+				mute: false, solo: false, // Nuevas propiedades
+				eq: { low: 0, mid: 0, high: 0 },
+				notes: [],
+				triggers: [],
+				sampleId: null, sampleBase64: null, customJS: "", trim: [0, 0]
+			};
+		}
+
+		function uploadTrackIcon(event, idx) {
+			const file = event.target.files[0];
+			if (!file)
+				return;
+			const reader = new FileReader();
+			reader.addEventListener('load', (e) => {
+				saveState();
+				s.tracks[idx].iconImg = e.target.result;
+				buildTracks();
+			});
+			reader.readAsDataURL(file);
+		}
+
+		// NUEVA FUNCIÓN: Mover Pista Arriba/Abajo
+		function moveTrack(idx, dir) {
+			if (idx + dir < 0 || idx + dir >= s.tracks.length) return;
+			const temp = s.tracks[idx];
+			s.tracks[idx] = s.tracks[idx + dir];
+			s.tracks[idx + dir] = temp;
+			actTrk = idx + dir;
+			buildTracks();
+			draw();
+		}
+
+		function addTrack() {
+			s.tracks.push(createTrackObj(`Track ${s.tracks.length + 1}`, 'square'));
+			actTrk = s.tracks.length - 1;
+			buildTracks();
+			draw();
+		}
+		function delTrack(idx) {
+			if (confirm('Delete Track?')) {
+				s.tracks.splice(idx, 1);
+				actTrk = Math.max(0, actTrk - 1);
+				buildTracks();
+				draw();
+			}
+		}
+
+		// Inicializar primer track si está vacío
+		if (s.tracks.length === 0) addTrack();
+
+		// --- DSP AUDIO CORE ---
+		let reverbBuffer = null;
+		function initReverb() {
+			if (reverbBuffer) return;
+			const rate = A_CTX.sampleRate, len = rate * 2;
+			reverbBuffer = A_CTX.createBuffer(2, len, rate);
+			for (let i = 0; i < len; i++) {
+				const env = Math.exp(-i / rate * 2);
+				reverbBuffer.getChannelData(0)[i] = (Math.random() * 2 - 1) * env;
+				reverbBuffer.getChannelData(1)[i] = (Math.random() * 2 - 1) * env;
+			}
+		}
+
+		function getFreq(r) {
+			const o = Math.floor(r / 12), n = { 'C': -9, 'C#': -8, 'D': -7, 'D#': -6, 'E': -5, 'F': -4, 'F#': -3, 'G': -2, 'G#': -1, 'A': 0, 'A#': 1, 'B': 2 }[NOTES[r % 12]];
+			return 440 * Math.pow(2, (n + (OCTAVES[o] - 4) * 12) / 12);
+		}
+
+		// NUEVO: Generador de EQ Multibanda en cascada
+		function createEQ(ctx, eqData) {
+			const low = ctx.createBiquadFilter();
+			low.type = 'lowshelf';
+			low.frequency.value = 320;
+			low.gain.value = parseFloat(eqData.low) || 0;
+
+			const mid = ctx.createBiquadFilter();
+			mid.type = 'peaking';
+			mid.frequency.value = 1000;
+			mid.gain.value = parseFloat(eqData.mid) || 0;
+
+			const high = ctx.createBiquadFilter();
+			high.type = 'highshelf';
+			high.frequency.value = 3200;
+			high.gain.value = parseFloat(eqData.high) || 0;
+
+			const flt = ctx.createBiquadFilter();
+			flt.type = 'lowpass';
+			flt.frequency.value = parseFloat(eqData.flt) || 10000;
+
+			low.connect(mid);
+			mid.connect(high);
+			high.connect(flt);
+			return { in: low, out: flt }; // Devuelve los puntos de entrada y salida
+		}
+
+		// NÚCLEO DE GENERACIÓN DE SONIDO (Soporta Síntesis, Samplers y Código)
+		// NUEVO: playNode adaptado para soportar EQ Completo y EQ de Nota Individual
+		/**
+		 * @param {Note} noteConfig
+		*/
+		function playNode(trk, r, t, dur, ctx, dest, noteConfig = {}) {
+			const gain = ctx.createGain();
+			const panner = ctx.createStereoPanner ? ctx.createStereoPanner() : ctx.createPanner();
+			panner.pan.value = noteConfig.p ? parseFloat(noteConfig.p) : parseFloat(trk.pan || 0);
+
+			// Si la nota tiene EQ propio, usarlo. Si no, usar el del track
+			const currentEQ = noteConfig.eq || trk.eq;
+			const eqChain = createEQ(ctx, currentEQ);
+
+			// Asegurarse de los atributos
+			const safeAtt = Math.max(0.001, parseFloat(trk.att) || 0.01);
+			const safeRel = Math.max(0.001, parseFloat(trk.rel) || 0.01);
+			const safeDur = (isFinite(dur) && dur > 0) ? dur : 0.1;
+			const safeVol = isFinite(parseFloat(trk.vol)) ? parseFloat(trk.vol) : 0.7;
+
+			gain.gain.setValueAtTime(0, t);
+			gain.gain.linearRampToValueAtTime(safeVol, t + safeAtt);
+			gain.gain.setTargetAtTime(0, t + safeDur, safeRel);
+
+			eqChain.out.connect(panner);
+			panner.connect(gain);
+			gain.connect(dest);
+
+			if (trk.type === 'sampler' && trk.sampleId && sampleBuffers[trk.sampleId]) {
+				const source = ctx.createBufferSource();
+				source.buffer = sampleBuffers[trk.sampleId];
+				source.connect(eqChain.in); // Conectar al inicio del EQ
+				const semitones = 36 - r;
+				source.playbackRate.value = Math.pow(2, semitones / 12);
+
+				const trimStart = isFinite(parseFloat(trk.trim[0])) ? parseFloat(trk.trim[0]) : 0;
+				source.start(t, trimStart);
+				source.stop(t + safeDur + safeRel);
+			}
+			else if (trk.type === 'custom' && trk.customJS) {
+				try {
+					const fn = new Function('ctx', 'freq', 't', 'dur', 'gainNode', trk.customJS);
+					fn(ctx, getFreq(r), t, safeDur, eqChain.in); // Conectar instrumento custom al EQ
+				} catch (e) {
+					console.error("Error DSP Custom", e);
+				}
+			}
+			else {
+				const osc = ctx.createOscillator();
+				osc.type = trk.type === 'sampler' || trk.type === 'custom' ? 'sine' : trk.type;
+				osc.frequency.value = getFreq(r);
+				osc.connect(eqChain.in);
+				osc.start(t);
+				osc.stop(t + safeDur + safeRel + 0.5);
+			}
+		}
+
+		function createMasterBus(ctx, dest) {
+			const comp = ctx.createDynamicsCompressor();
+			comp.threshold.value = parseFloat(document.getElementById('m-comp').value);
+
+			const eq = ctx.createBiquadFilter();
+			eq.type = 'lowpass';
+			eq.frequency.value = parseFloat(document.getElementById('m-eq').value);
+
+			const revLvl = parseFloat(document.getElementById('m-rev').value);
+			const mGain = ctx.createGain();
+			mGain.gain.value = 1.0;
+
+			if (revLvl > 0 && reverbBuffer) {
+				const conv = ctx.createConvolver();
+				conv.buffer = reverbBuffer;
+
+				const dry = ctx.createGain(), wet = ctx.createGain();
+				dry.gain.value = 1 - revLvl;
+				wet.gain.value = revLvl;
+
+				eq.connect(dry);
+				eq.connect(conv);
+				conv.connect(wet);
+				dry.connect(comp);
+				wet.connect(comp);
+			} else {
+				eq.connect(comp);
+			}
+
+			comp.connect(mGain);
+			mGain.connect(dest);
+
+			return eq;
+		}
+
+		function setElementText(id, text) { const element = document.getElementById(id); if (element) element.innerText = text; }
+		function setElementValue(id, value) { const element = document.getElementById(id); if (element) element.value = value; }
+
+		function buildUI() {
+			setElementValue('song_name', s.name);
+			setElementValue('steps', s.steps);
+
+			buildTracks();
+			buildTimeline();
+			buildKeys();
+			resizeGrid();
+		}
+
+		// Enlaza los sliders de los tracks con sus respectivos indicadores
+		function bindPrecisionControl(trackIdx, prop, idPrefix) {
+			const slider = document.getElementById(`${idPrefix}-slider-${trackIdx}`);
+			const input = document.getElementById(`${idPrefix}-input-${trackIdx}`);
+
+			const update = (val) => {
+				val = parseFloat(val);
+				s.tracks[trackIdx][prop] = val;
+				slider.value = val;
+				input.value = val;
+			};
+
+			slider.addEventListener('input', (e) => {
+				saveState();
+				update(e.target.value);
+			});
+			input.addEventListener('change', (e) => {
+				saveState();
+				update(e.target.value);
+			});
+		}
+
+		function buildTracks() {
+			const tc = document.getElementById('tracks-container');
+			tc.innerHTML = '';
+
+			const groups = {};
+			s.tracks.forEach((t, i) => {
+				if (!groups[t.group])
+					groups[t.group] = [];
+				groups[t.group].push({ t, i });
+			});
+
+			const defaultSvg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='%23fff' viewBox='0 0 24 24'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z'/></svg>";
+
+			for (let gName in groups) {
+				// --- CABECERA DE GRUPO CON MUTE Y SOLO ---
+				const grpDiv = document.createElement('div');
+
+				// Comprobar estado global del grupo
+				const allMuted = groups[gName].every(item => item.t.mute);
+				const anySolo = groups[gName].some(item => item.t.solo);
+
+				grpDiv.innerHTML = `
+					<div style="background:#111; padding:8px; font-weight:bold; font-size:13px; margin-top:5px; border-left: 3px solid var(--accent); display:flex; justify-content:space-between; align-items:center;">
+						<div>
+							<span class="group-toggle" style="cursor:pointer; color:var(--accent); margin-right:5px;" title="Collapse this track group">▼</span>
+							📁<input type="text" value="${gName}" title="Name of this group of tracks" class="group-input" placeholder="Group Name" data-group-name="${gName}" style="background:transparent; border:none; color:white; font-weight:bold; width:120px;">
+						</div>
+						<div>
+							<button class="btn grp-mute" title="Mute this group" style="padding:2px 6px; font-size:10px; background:${allMuted ? '#e74c3c' : '#7f8c8d'};">M</button>
+							<button class="btn grp-solo" title="Solo this group" style="padding:2px 6px; font-size:10px; background:${anySolo ? '#f1c40f' : '#7f8c8d'}; color:#000;">S</button>
+						</div>
+					</div>`;
+
+				// Colapsar grupo
+				grpDiv.querySelector('.group-toggle').addEventListener('click', () => {
+					const isCollapsed = grpDiv.classList.toggle('collapsed-state');
+					this.innerText = isCollapsed ? '▶' : '▼';
+
+					// Ocultar las tarjetas de pista del DOM, pero no borrarlas de s.tracks
+					const cards = tc.querySelectorAll(`.track-card[data-group="${gName}"]`);
+					cards.forEach(card => card.style.display = isCollapsed ? 'none' : 'block');
+				});
+
+				// Mute de Grupo
+				grpDiv.querySelector('.grp-mute').addEventListener('click', () => {
+					const newState = !allMuted;
+					groups[gName].forEach(item => item.t.mute = newState);
+					buildTracks();
+				});
+
+				// Solo de Grupo
+				grpDiv.querySelector('.grp-solo').addEventListener('click', () => {
+					const newState = !anySolo;
+					groups[gName].forEach(item => item.t.solo = newState);
+					buildTracks();
+				});
+
+				tc.appendChild(grpDiv);
+
+				// --- PISTAS INDIVIDUALES ---
+				groups[gName].forEach(item => {
+					const t = item.t, i = item.i;
+					const d = document.createElement('div');
+					d.className = `track-card ${i === actTrk ? 'active' : ''}`;
+					d.setAttribute('data-group', t.group);
+					d.style.borderLeft = `4px solid ${t.color}`;
+
+					d.addEventListener('mousedown', (e) => {
+						if (!['SELECT', 'INPUT', 'BUTTON', 'IMG', 'LABEL'].includes(e.target.tagName)) {
+							actTrk = i;
+							buildTracks();
+							draw();
+						}
+					});
+
+					const imgSource = t.iconImg || defaultSvg;
+
+					// Si inputMax es null, usa `max`, al igual que con inputMin
+					function createPrecisionControl(label, trackIdx, prop, min, max, step, idPrefix, title, inputMax = null, inputMin = null) {
+						const val = s.tracks[trackIdx][prop];
+						return `
+							<div class="knob-group" title="${title}">
+								${label}
+								<input type="number" min="${inputMin || min}" max="${inputMax || max}" step="${step}" value="${val}" id="${idPrefix}-input-${trackIdx}" class="mixer-input">
+								<input type="range" min="${min}" max="${max}" step="${step}" value="${val}" id="${idPrefix}-slider-${trackIdx}">
+							</div>`;
+					}
+
+					d.innerHTML = `
+						<div class="track-header" style="width:100%;">
+							<div style="display:flex; gap: 8px; align-items:center;">
+								<span class="track-toggle" style="color:var(--accent); cursor:pointer;">▼</span>
+
+								<label title="Change Track Icon" style="cursor:pointer;">
+									<img src="${imgSource}" class="track-icon">
+									<input type="file" style="display:none;" accept="image/*" class="icon-file">
+								</label>
+
+								<input type="text"	title="Name of this track" placeholder="Track X" value="${t.name}" class="track-name" style="width:70px; font-weight:bold; font-size:12px; background:transparent; border:none; color:white;">
+								<input type="color"	title="Color of this track" value="${t.color}" class="track-color" style="width:20px; height:20px; padding:0; border:none; cursor:pointer;">
+							</div>
+
+							<div class="track-controls">
+								<button class="btn t-mute" title="Mute/Unmute this track" style="padding:4px 6px; background:${t.mute ? '#e74c3c' : '#7f8c8d'};">M</button>
+								<button class="btn t-solo" title="Solo/Unsolo this track" style="padding:4px 6px; background:${t.solo ? '#f1c40f' : '#7f8c8d'}; color:#000;">S</button>
+								
+								<select class="track-mode" style="width:70px;" title="The type of piano roll this track has">
+									<option value="melodic" title="The piano roll has more than 1 tone" ${t.displayMode === 'melodic' ? 'selected' : ''}>Multi-tone</option>
+									<option value="drum" title="The piano roll has only 1 tone" ${t.displayMode === 'drum' ? 'selected' : ''}>Single-tone</option>
+								</select>
+								
+								<button class="btn t-up" title="Move this track up" style="padding:4px 6px;">▲</button>
+								<button class="btn t-down" title="Move this track down" style="padding:4px 6px;">▼</button>
+								<button class="t-del" title="Delete this track">X</button>
+							</div>
+						</div>
+						
+						<div style="display:flex; gap:5px; margin-top:8px;">
+							<select style="flex-grow:1;" class="track-type" title="Track type">
+								<option value="sine" ${t.type === 'sine' ? 'selected' : ''}>Sine</option>
+								<option value="square" ${t.type === 'square' ? 'selected' : ''}>Square</option>
+								<option value="sawtooth" ${t.type === 'sawtooth' ? 'selected' : ''}>Saw</option>
+								<option value="sampler" ${t.type === 'sampler' ? 'selected' : ''}>Audio File</option>
+								<option value="custom" ${t.type === 'custom' ? 'selected' : ''}>JS Plugin</option>
+							</select>
+							${t.type === 'sampler' || t.type === 'custom' ? `<button class="btn blue t-adv" title="Advanced track settings">⚙️</button>` : ''}
+						</div>
+
+						<!-- SLIDER DE PROPIEDADES POR TRACK -->
+						<div class="mixer-strip">
+							${createPrecisionControl('Release', i, 'rel', 0.1, 3, 0.01, 'rel', "General release of the track. (0.1 <-> 3.0)")}
+							${createPrecisionControl('Panning', i, 'pan', -1, 1, 0.1, 'pan', "General panning of the track. (-1.0 = Left, 0.0 = Center, 1.0 = Right)")}
+							${createPrecisionControl('Filter', i, 'flt', 200, 20000, 100, 'flt', "General filter of the track in Hz. (200 <-> 20000)")}
+							${createPrecisionControl('Attack', i, 'att', 0.01, 1, 0.01, 'att', "General time it takes to the track to 'attack' in seconds. (0.01 <-> 1.00)")}
+							${createPrecisionControl('Volume', i, 'vol', 0, 1, 0.05, 'vol', "General volume of the track. (0.00 <-> 1.00).\nWARNING: You can max it out up to 100.0. Be VERY CAREFUL tho.", 100)}
+						</div>
+					`;
+
+					tc.appendChild(d);
+
+					// --- IMPLEMENTAR EVENTOS----- (en vez de onclick)
+					d.querySelector('.track-toggle').addEventListener('click', () => {
+						const isCollapsed = d.classList.toggle('collapsed');
+						this.innerText = isCollapsed ? '▶' : '▼';
+						// El CSS que añadimos arriba se encargará de ocultar los controles internos
+					});
+
+					d.querySelector('.icon-file').addEventListener('change', (e) => uploadTrackIcon(e, i));
+					d.querySelector('.track-name').addEventListener('change', (e) => s.tracks[i].name = e.target.value);
+					d.querySelector('.track-color').addEventListener('change', (e) => {
+						s.tracks[i].color = e.target.value;
+						buildTracks();
+						draw();
+					});
+					d.querySelector('.track-mode').addEventListener('change', (e) => {
+						s.tracks[i].displayMode = e.target.value;
+						draw();
+					});
+
+					d.querySelector('.t-up').addEventListener('click', () => { moveTrack(i, -1); });
+					d.querySelector('.t-down').addEventListener('click', () => { moveTrack(i, 1); });
+					d.querySelector('.t-del').addEventListener('click', () => { delTrack(i); });
+					d.querySelector('.track-type').addEventListener('change', (e) => { changeTrackType(i, e.target.value); });
+
+					if (d.querySelector('.t-adv')) d.querySelector('.t-adv').addEventListener('click', () => openAdvanced(i));
+
+					d.querySelector('.t-mute').addEventListener('click', () => {
+						s.tracks[i].mute = !s.tracks[i].mute;
+						buildTracks();
+					});
+					d.querySelector('.t-solo').addEventListener('click', () => {
+						s.tracks[i].solo = !s.tracks[i].solo;
+						buildTracks();
+					});
+
+					// Re-vincular Sliders de forma segura
+					['rel', 'pan', 'flt', 'att', 'vol'].forEach(prop => {
+						const slider = d.querySelector(`#${prop}-slider-${i}`);
+						const input = d.querySelector(`#${prop}-input-${i}`);
+						const update = (val) => {
+							val = parseFloat(val);
+							s.tracks[i][prop] = val;
+							slider.value = val;
+							input.value = val;
+						};
+						slider.addEventListener('input', e => { update(e.target.value); });
+						input.addEventListener('change', e => { update(e.target.value); });
+					});
+				});
+			}
+		}
+
+		function renameGroup(oldName, newName) {
+			s.tracks.forEach(t => {
+				if (t.group === oldName) {
+					t.group = newName;
+				}
+			});
+
+			buildTracks();
+		}
+
+		function changeTrackType(idx, type) {
+			s.tracks[idx].type = type;
+			buildTracks();
+		}
+
+		let customTemplates = JSON.parse(localStorage.getItem('daw_templates')) || [];
+
+		function updateTemplateMenu() {
+			const menu = document.getElementById('user-templates');
+			menu.innerHTML = '<option value="">Load Template</option>';
+
+			// Categorizar por Tags
+			const tags = [...new Set(customTemplates.map(t => t.tag))];
+			tags.forEach(tag => {
+				const optGroup = document.createElement('optgroup');
+				optGroup.label = tag;
+
+				customTemplates.filter(t => t.tag === tag).forEach(t => {
+					const opt = document.createElement('option');
+					opt.value = t.id;
+					opt.innerText = t.name;
+					optGroup.appendChild(opt);
+				});
+				menu.appendChild(optGroup);
+			});
+		}
+		window.addEventListener('load', updateTemplateMenu); // Cargar al inicio
+
+		function saveTemplateFromSelection() {
+			if (clipboard.length === 0 && selection.length === 0)
+				return alert("First, select the notes you want to add to the template.");
+
+			const source = clipboard.length > 0 ? clipboard : selection;
+
+			const name = prompt("Template Name (ex.: Aggresive Beat Drop):");
+			if (!name) return;
+			const tag = prompt("Category (ex: Musical, Aggresive, Funky):", "General");
+
+			// Normalizar posiciones a 0
+			const clone = JSON.parse(JSON.stringify(source));
+			const minC = Math.min(...clone.map(n => n.c));
+			clone.forEach(n => n.c -= minC);
+
+			customTemplates.push({ id: Date.now().toString(), name, tag, notes: clone });
+			localStorage.setItem('daw_templates', JSON.stringify(customTemplates));
+			updateTemplateMenu();
+			alert("Template Saved.");
+		}
+
+		function insertUserTemplate(id) {
+			if (!id) return;
+			const tmpl = customTemplates.find(t => t.id === id);
+			if (tmpl) {
+				saveState(); // Guardamos en el historial
+				clearSelection();
+
+				const startPos = cur; // Insertar en la línea roja de reproducción
+
+				tmpl.notes.forEach(n => {
+					const newNote = { r: n.r, c: startPos + n.c, d: n.d, p: n.p, vol: n.vol || 1, cHex: n.cHex };
+					s.tracks[actTrk].notes.push(newNote);
+					selection.push(newNote); // Seleccionamos las notas recién creadas
+				});
+
+				mobileTool = 'select';
+				setElementValue('mobile-tool-select', mobileTool);
+
+				draw();
+			}
+			setElementValue('user_templates', ""); // Reset
+		}
+
+		/**
+		 * @param {PointerEvent} e
+		*/
+		function showContextMenu(e) {
+			const ctxMenu = document.getElementById('ctx-menu');
+			ctxMenu.style.display = 'flex';
+			ctxMenu.style.left = e.clientX + 'px';
+			ctxMenu.style.top = e.clientY + 'px';
+		}
+
+		function hideContextMenu() { document.getElementById('ctx-menu').style.display = 'none'; }
+		function clearSelection() { selection = []; isSelecting = false; }
+
+		function buildTimeline() {
+			const tl = document.getElementById('timeline');
+			tl.innerHTML = '';
+			tl.style.position = 'relative';
+			tl.style.width = (s.steps * zoomX) + 'px'; // Mismo ancho exacto que el canvas
+
+			for (let i = 0; i < s.steps; i += 16) {
+				const d = document.createElement('div');
+				// Posicionamiento absoluto matemático para que coincida con el Grid del canvas
+				d.style.cssText = `position: absolute; left: ${i * zoomX}px; height: 100%; border-left: 2px solid #8e44ad; padding-left: 4px; font-size: 11px; color: #aaa; font-weight: bold;`;
+				d.innerText = `Beat ${(i / 16) + 1}`;
+				tl.appendChild(d);
+			}
+		}
+
+		function buildKeys() {
+			const kDiv = document.getElementById('keys');
+			/*<div style="min-height: 13.82px; border-left: 1px solid rgb(142, 68, 173); padding-left: 4px; font-size: 10px; color: rgb(170, 170, 170);"></div>^*/
+			kDiv.innerHTML = '';
+			OCTAVES.forEach((o, oIdx) => NOTES.forEach((n, nIdx) => {
+				const r = (oIdx * 12) + nIdx;
+				const d = document.createElement('div');
+				d.className = `key ${n.includes('#') ? 'b' : 'w'}`;
+				d.innerText = n + o;
+				d.style.height = `${zoomY}px`;
+
+				// ¡Teclas interactivas!
+				d.addEventListener('mousedown', () => {
+					const t = s.tracks[actTrk];
+					const bus = createMasterBus(A_CTX, A_CTX.destination);
+					playNode(t, r, A_CTX.currentTime, 0.5, A_CTX, bus, { p: 0, eq: t.eq });
+
+					// Iluminar la fila temporalmente en el canvas
+					cCtx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+					cCtx.fillRect(0, r * zoomY, cvs.width, zoomY);
+				});
+				kDiv.appendChild(d);
+				d.style.y = String(parseInt(document.getElementById('timeline').style.height) * 2);
+			}));
+		}
+
+		function resizeGrid() {
+			s.steps = parseInt(document.getElementById('steps').value);
+			cvs.width = s.steps * zoomX;
+			cvs.height = (NOTES.length * OCTAVES.length) * zoomY;
+			buildTimeline();
+			buildKeys();
+			draw();
+		}
+
+		function draw(ps = -1) {
+			cCtx.clearRect(0, 0, cvs.width, cvs.height);
+			const trk = s.tracks[actTrk];
+			if (!trk)
+				return;
+
+			const isDrum = trk.displayMode === 'drum';
+			const rows = isDrum ? 1 : NOTES.length * OCTAVES.length;
+			const localCellH = isDrum ? cvs.height : zoomY; // Si es batería, ocupa todo el alto
+
+			// Background Grid
+			for (let r = 0; r < rows; r++) {
+				cCtx.fillStyle = isDrum ? '#1a1a2e' : (NOTES[r % 12].includes('#') ? '#1a1a2e' : '#252540');
+				cCtx.fillRect(0, r * localCellH, cvs.width, localCellH);
+				cCtx.strokeStyle = '#111';
+				cCtx.beginPath();
+				cCtx.moveTo(0, r * localCellH);
+				cCtx.lineTo(cvs.width, r * localCellH);
+				cCtx.stroke();
+			}
+
+			for (let c = 0; c < s.steps; c++) {
+				cCtx.strokeStyle = c % 4 === 0 ? '#555' : '#333';
+
+				if (c % 16 === 0) cCtx.strokeStyle = '#8e44ad';
+				else if (c % 4 === 0) cCtx.strokeStyle = '#555'; // Negra
+				else if (c % 1 === 0) cCtx.strokeStyle = '#333'; // Semicorchea
+				else cCtx.strokeStyle = '#1a1a1a'; // Fusa o Semifusa
+
+				cCtx.beginPath();
+				cCtx.moveTo(c * zoomX, 0);
+				cCtx.lineTo(c * zoomX, cvs.height);
+				cCtx.stroke();
+			}
+
+			// Dibujar Notas
+			const showWaves = document.getElementById('show-wave') ? document.getElementById('show-wave').checked : false;
+
+			s.tracks.forEach((track, idx) => {
+				const isDrum = track.displayMode === 'drum';
+				const isActiveTrack = (idx === actTrk);
+
+				// Ghost Notes (Opacidad baja para las pistas no activas)
+				cCtx.globalAlpha = isActiveTrack ? 1.0 : 0.2;
+
+				track.notes.forEach(n => {
+					const isSel = isActiveTrack && selection.includes(n);
+					const drawR = isDrum ? 36 : n.r;
+
+					// Color: Seleccionado -> Verde | Nota propia -> cHex | Pista -> color
+					const noteColor = isSel ? '#2ecc71' : (n.cHex || track.color);
+					cCtx.fillStyle = noteColor;
+					cCtx.fillRect(n.c * zoomX, drawR * zoomY, n.d * zoomX, zoomY);
+
+					// RENDERIZADO DE WAVEFORM (Real, leyendo el buffer de audio de forma optimizada)
+					if (track.type === 'sampler' && track.sampleId && sampleBuffers[track.sampleId] && showWaves) {
+						const buf = sampleBuffers[track.sampleId].getChannelData(0);
+						// Calculamos el salto (step) para no dibujar 44100 puntos y saturar el rendimiento
+						const step = Math.max(1, Math.floor(buf.length / (n.d * zoomX)));
+						cCtx.beginPath();
+						cCtx.strokeStyle = 'rgba(255,255,255,0.7)'; // Onda semitransparente blanca
+						for (let i = 0; i < n.d * zoomX; i++) {
+							const val = buf[i * step] || 0;
+							// Calcular altura de la onda centrada en la nota
+							const y = (drawR * zoomY) + (zoomY / 2) + (val * (zoomY / 2));
+							if (i === 0)
+								cCtx.moveTo(n.c * zoomX + i, y);
+							else
+								cCtx.lineTo(n.c * zoomX + i, y);
+						}
+						cCtx.stroke();
+					}
+
+					cCtx.strokeStyle = isSel ? '#fff' : '#111';
+					cCtx.strokeRect(n.c * zoomX, drawR * zoomY, n.d * zoomX, zoomY);
+
+					// TEXTO DE PANEO (Recuperado de tu código)
+					if (isActiveTrack && n.p && n.p !== 0) {
+						cCtx.fillStyle = '#fff';
+						cCtx.font = '8px sans-serif';
+						cCtx.fillText(n.p < 0 ? 'L' : 'R', n.c * zoomX + 2, drawR * zoomY + 12);
+					}
+				});
+			});
+			cCtx.globalAlpha = 1.0; // Reset general
+
+			if (isSelecting) {
+				cCtx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+				cCtx.strokeStyle = '#fff';
+				cCtx.fillRect(selBox.x, selBox.y, selBox.w, selBox.h);
+				cCtx.strokeRect(selBox.x, selBox.y, selBox.w, selBox.h);
+			}
+			if (ps >= 0) {
+				cCtx.fillStyle = 'rgba(231,76,60,0.5)';
+				cCtx.fillRect(ps * zoomX, 0, zoomX, cvs.height);
+			}
+		}
+
+		/** Elimina las notas de `notesToDelete` de `track`. */
+		function deleteNotes(track, notesToDelete) { track.notes = track.notes.filter(trackNote => !notesToDelete.includes(trackNote)); hideContextMenu(); }
+
+
+
+		// ------ INTERACCIÓN RATÓN Y TECLADO (Selección múltiple, Paneo, Edición) ----------------
+
+
+		let interact = false, aNote = null, startMouse = { x: 0, y: 0 };
+		/** Set de las teclas que el usuario está presionando */
+		const heldKeys = new Set();
+
+		let mobileTool = 'draw'; // Variable global
+
+		/* Old OnMouseDown
+		cvs.onmousedown = e => {
+			// Normalizar coordenadas para móvil y escritorio
+			const rect = cvs.getBoundingClientRect();
+			const ex = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+			const ey = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+
+			const c = Math.floor(ex / zoomX);
+			const r = (s.tracks[actTrk].displayMode === 'drum') ? 36 : Math.floor(ey / zoomY);
+			const t = s.tracks[actTrk];
+
+			// --- LÓGICA DE HERRAMIENTAS MÓVILES ---
+
+			// 1. MODO SELECCIÓN (Sustituye al Clic Derecho)
+			if (mobileTool === 'select' || e.button === 2) {
+				isSelecting = true;
+				selection = [];
+				startMouse = { x: ex, y: ey };
+				selBox = { x: startMouse.x, y: startMouse.y, w: 0, h: 0 };
+				draw();
+				return;
+			}
+
+			// 2. MODO BORRAR
+			if (mobileTool === 'delete') {
+				t.notes = t.notes.filter(n => !(r === n.r && c >= n.c && c < n.c + n.d));
+				draw();
+				return;
+			}
+
+			// 3. MODO AJUSTAR PANEO (Sustituye al Clic Central)
+			if (mobileTool === 'pan' || e.button === 1) {
+				const clicked = t.notes.find(n => (t.displayMode === 'drum' ? true : r === n.r) && c >= n.c && c < n.c + n.d);
+				if (clicked) {
+					let newPan = prompt("Pan (-1 = Left, 1 = Right, 0 = Center):", clicked.p || 0);
+					if (newPan !== null && !isNaN(newPan))
+						clicked.p = Math.max(-1, Math.min(1, parseFloat(newPan)));
+					draw();
+				}
+				return;
+			}
+
+			// 4. MODO DIBUJAR (Clic Izquierdo)
+			aNote = t.notes.find(n => (t.displayMode === 'drum' ? true : r === n.r) && c >= n.c && c < n.c + n.d);
+			if (!aNote) {
+				selection = [];
+
+				saveState();
+
+				aNote = { r, c, d: 1, p: 0 };
+				t.notes.push(aNote);
+				playNode(t, r, A_CTX.currentTime, 0.5, A_CTX, A_CTX.destination);
+			} else {
+				if (!selection.includes(aNote))
+					selection = [aNote];
+			}
+			interact = true;
+			draw();
+		};
+		*/
+
+		const prScroll = document.getElementById('piano-roll');
+
+		function onMouseDown(e) {
+			const rect = cvs.getBoundingClientRect();
+			const ex = e.clientX - rect.left;
+			const ey = e.clientY - rect.top;
+
+			const c = Math.floor(ex / (zoomX * snapRes)) * snapRes;
+			const r = s.tracks[actTrk].displayMode === 'drum' ? 36 : Math.floor(ey / zoomY);
+			const t = s.tracks[actTrk];
+
+			// Detectar si el usuario ha hecho click dentro de una selección existente (Para arrastrarla)
+			const clickedInSel = selection.find(n => (t.displayMode === 'drum' ? true : r === n.r) && c >= n.c && c < n.c + n.d);
+
+			function startSelection() {
+				if (!heldKeys.has('Shift')) {
+					clearSelection();
+				}
+				isSelecting = true;
+				startMouse = { x: ex, y: ey };
+				selBox = { x: startMouse.x, y: startMouse.y, w: 0, h: 0 };
+			}
+
+			// 1. ARRASTRAR
+			if (e.button === 0 && clickedInSel && mobileTool === 'select') {
+				isDraggingSelection = true;
+				dragStartC = c;
+				dragStartR = r;
+				originalSel = JSON.parse(JSON.stringify(selection)); // Clonar estado inicial
+				saveState(); // Guardar antes de arrastrar
+				return;
+			}
+
+			// 2. Selección de caja o menú contextual (NADA DE BOTÓN CENTRAL)
+			if (e.button === 2 || mobileTool === 'select') {
+				// Si hace clic derecho en una nota ya seleccionada, abrir el menú contextual
+				if (clickedInSel) {
+					showContextMenu(e);
+				} else {
+					startSelection();
+				}
+				draw();
+				return;
+			}
+
+			/*
+			// 3. MODO DIBUJAR
+			if (mobileTool === 'draw' && e.button === 0) {
+				saveState(); // Guardar para Undo
+				selection = [];
+				aNote = { r, c, d: 1, p: 0, vol: 1.0 };
+				t.notes.push(aNote);
+
+				const bus = createMasterBus(A_CTX, A_CTX.destination);
+				playNode(t, r, A_CTX.currentTime, 0.5, A_CTX, bus, { p: 0, eq: t.eq });
+				isDrawing = true;
+				draw();
+			}
+			*/
+
+			// 3. MODO AJUSTAR PANEO (Sustituye al Clic Central)
+			if (mobileTool === 'pan' || e.button === 1) {
+				aNote = [];
+				let p = null;
+
+				// Panear selección
+				if (selection.length > 0) {
+					aNote = selection;
+					// Media del paneo de la selección
+					aNote.forEach(n => {
+						if (p) p = (n.p + p) / 2;
+						else p = n.p;
+					});
+				}
+				// Si no hay selección
+				else {
+					aNote = t.notes.find(n => (t.displayMode === 'drum' ? true : r === n.r) && c >= n.c && c < n.c + n.d);
+					if (aNote) {
+						p = aNote.p;
+						aNote = [aNote];
+					}
+				}
+
+				if (aNote.length > 0) {
+					let newPan = prompt("New panning (-1.0 = Left, 0.0 = Center, 1.0 = Right)", p || 0).replace(/[,]/g, '.');
+					if (newPan !== null && !isNaN(newPan)) {
+						saveState();
+
+						newPan = Math.max(-1, Math.min(1, parseFloat(newPan)));
+						aNote.forEach(n => { n.p = newPan; });
+					}
+				}
+
+				return;
+			}
+
+			if (e.button === 0) {
+				// MODO BORRAR
+				if (mobileTool === 'delete') {
+					saveState();
+					clearSelection();
+
+					// Eliminar notas.
+					t.notes = t.notes.filter(n => !((t.displayMode === 'drum' ? true : r === n.r) && c >= n.c && c < n.c + n.d));
+
+					startSelection();
+					draw();
+					return;
+				}
+
+				// DRAW MODE
+				if (mobileTool === 'draw') {
+					// Encontrar notas en esa posición
+					aNote = t.notes.find(n => (t.displayMode === 'drum' ? true : r === n.r) && c >= n.c && c < n.c + n.d);
+
+					// Si ya hay una nota ahí, añadirla a la selección
+					if (aNote) {
+						// Si esa nota es la única seleccionada, ELIMINARLA.
+						if (selection.length === 1 && selection.includes(aNote)) {
+							saveState();
+
+							deleteNotes(t, [aNote]);
+							clearSelection();
+						}
+						// Añadir únicamente esa nota a la selección para que se pueda modificar su duración
+						else {
+							saveState();
+
+							clearSelection();
+							selection.push(aNote);
+							interact = true;
+
+							const bus = createMasterBus(A_CTX, A_CTX.destination);
+							playNode(t, aNote.r, A_CTX.currentTime, aNote.d * (15 / s.bpm), A_CTX, bus, { p: 0, eq: t.eq });
+						}
+					}
+					// Crear una nueva
+					else {
+						saveState();
+						clearSelection();
+						hideContextMenu();
+
+						aNote = { r, c, d: snapRes, p: 0, vol: 1.0 };
+						t.notes.push(aNote);
+
+						selection.push(aNote);
+
+						const bus = createMasterBus(A_CTX, A_CTX.destination);
+						playNode(t, r, A_CTX.currentTime, aNote.d * (15 / s.bpm), A_CTX, bus, { p: 0, eq: t.eq });
+						isDrawing = true;
+						interact = true;
+						draw();
+					}
+				}
+			}
+		}
+
+		cvs.addEventListener('mousedown', e => { onMouseDown(e); });
+
+		/**
+		 * @param {MouseEvent | TouchEvent} e
+		*/
+		function MouseOrTouchMoved(e) {
+			// Extra seguridad anti-GAS
+			if (!cvs || !cvs.getBoundingClientRect) return;
+
+			// Evitar scroll en móvil
+			if (e.touches)
+				e.preventDefault();
+
+			let x = (e.touches ? e.touches[0].clientX : e.clientX);
+			let y = (e.touches ? e.touches[0].clientY : e.clientY);
+
+			const rect = cvs.getBoundingClientRect();
+			const ex = x - rect.left;
+			const ey = y - rect.top;
+			const c = Math.floor(ex / (zoomX * snapRes)) * snapRes;
+			const r = s.tracks[actTrk].displayMode === 'drum' ? 36 : Math.floor(ey / zoomY);
+
+			// B. Estirar la nota que se está dibujando
+			if (mobileTool === 'draw' && interact && selection.length > 0) {
+				selection.forEach(n => {
+					n.d = Math.max(snapRes, c - n.c + snapRes);
+				});
+				draw();
+			}
+			// A. Arrastrar Grupo de Notas Seleccionadas
+			else if (isDraggingSelection) {
+				const dc = c - dragStartC;
+				const dr = r - dragStartR;
+
+				selection.forEach((n, idx) => {
+					n.c = Math.max(0, originalSel[idx].c + dc); // Evitar tiempos negativos
+					n.r = Math.max(0, originalSel[idx].r + dr); // Evitar tonos negativos
+				});
+				draw();
+			}
+			// C. Dibujar Caja de Selección
+			else if (isSelecting) {
+				selBox.w = ex - startMouse.x;
+				selBox.h = ey - startMouse.y;
+
+				let bx = selBox.w < 0 ? startMouse.x + selBox.w : startMouse.x;
+				let by = selBox.h < 0 ? startMouse.y + selBox.h : startMouse.y;
+				let bw = Math.abs(selBox.w), bh = Math.abs(selBox.h);
+
+				selection = s.tracks[actTrk].notes.filter(n => {
+					let nx = n.c * zoomX, ny = n.r * zoomY;
+					return (nx < bx + bw && nx + (n.d * zoomX) > bx && ny < by + bh && ny + zoomY > by) || (heldKeys.has('Shift') ? selection.includes(n) : false);
+				});
+				draw();
+			}
+
+			// --- AUTO-SCROLL DEL PIANO ROLL ---
+			// Si el ratón se acerca a los bordes de la ventana mientras hacemos una acción, movemos el scroll
+			if (isDraggingSelection || isDrawing || isSelecting) {
+				if (x > window.innerWidth - 75)
+					prScroll.scrollBy(15, 0);
+				else if (x < document.getElementById('left-panel').offsetWidth + 75)
+					prScroll.scrollBy(-15, 0);
+
+				if (y > window.innerHeight - 75)
+					prScroll.scrollBy(0, 15);
+				else if (y < 100)
+					prScroll.scrollBy(0, -15);
+			}
+		}
+
+		cvs.addEventListener('mousemove', e => {
+			if (cvs_ready) MouseOrTouchMoved(e);
+		});
+		cvs.addEventListener('touchmove', e => {
+			if (cvs_ready) MouseOrTouchMoved(e);
+		});
+
+		/**
+		 * Accionado cuando el usuario suelta o el botón del ratón o el toque del dedo de la pantalla.
+		*/
+		function outMouseOrTouch(ofWindow = false) {
+			// Si el jugador acaba de terminar una selección con el ratón, abrir el menú contextual, excepto que quiera eliminar notas
+			if (isSelecting && selection.length > 0) {
+				if (mobileTool === 'delete') {
+					saveState();
+
+					deleteNotes(s.tracks[actTrk], selection);
+					clearSelection();
+				} else if (ofWindow) {
+					const ctxMenu = document.getElementById('ctx-menu');
+					ctxMenu.style.display = 'flex';
+					ctxMenu.style.left = Math.min(e.clientX, window.innerWidth - 150) + 'px';
+					ctxMenu.style.top = Math.min(e.clientY, window.innerHeight - 200) + 'px';
+				}
+			}
+
+			// Resetear estados globales de interacción (Se usa 'window' para que no se congele si sales del canvas)
+			interact = false;
+			isSelecting = false;
+			isDrawing = false;
+			isDraggingSelection = false;
+			aNote = null;
+			draw();
+		}
+		cvs.addEventListener('mouseup', e => { outMouseOrTouch(); });
+		cvs.addEventListener('mouseleave', e => { outMouseOrTouch(); });
+		window.addEventListener('mouseup', e => { outMouseOrTouch(true); });
+
+		cvs.addEventListener('contextmenu', (e) => { e.preventDefault(); });
+
+		// ATAJOS DE TECLADO
+		window.addEventListener('keydown', e => {
+			if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')
+				return;
+
+			heldKeys.add(e.key);
+
+			const t = s.tracks[actTrk];
+
+			// BORRAR
+			if (e.key === 'Delete' || e.key === 'Backspace') {
+				saveState();
+				t.notes = t.notes.filter(n => !selection.includes(n));
+				clearSelection();
+				draw();
+			}
+
+			// COPIAR (Ctrl+C)
+			if (e.ctrlKey && e.key.toLowerCase() === 'c') {
+				clipboard = JSON.parse(JSON.stringify(selection)); // Clon profundo
+				// Normalizar origen al cero relativo
+				if (clipboard.length > 0) {
+					const minC = Math.min(...clipboard.map(n => n.c));
+					clipboard.forEach(n => n.c -= minC);
+				}
+			}
+
+			// PEGAR (Ctrl+V)
+			if (e.ctrlKey && e.key.toLowerCase() === 'v' && clipboard.length > 0) {
+				saveState();
+				// Pegar en la posición del playhead o en el compás actual
+				clipboard.forEach(n => {
+					t.notes.push({ r: n.r, c: n.c + cur, d: n.d, p: n.p });
+				});
+				draw();
+			}
+
+			// DESHACER (Ctrl + Z)
+			if (e.ctrlKey && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+				e.preventDefault();
+				undo();
+			}
+
+			// REHACER (Ctrl + Y  o  Ctrl + Shift + Z)
+			if ((e.ctrlKey && e.key.toLowerCase() === 'y') || (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'z')) {
+				e.preventDefault();
+				redo();
+			}
+		});
+		window.addEventListener('keyup', (e) => {
+			if (heldKeys.has(e.key)) {
+				heldKeys.delete(e.key);
+			}
+		});
+
+		// --- MODAL Y EDITORES AVANZADOS (Sampler / Custom JS) ---
+		function openAdvanced(idx) {
+			actTrk = idx;
+			buildTracks();
+
+			const t = s.tracks[idx];
+			setElementText('modal-title', `Editing: ${t.name}`);
+			document.getElementById('sampler-ui').style.display = t.type === 'sampler' ? 'flex' : 'none';
+			document.getElementById('code-ui').style.display = t.type === 'custom' ? 'flex' : 'none';
+
+			if (t.type === 'custom')
+				setElementValue('custom-code', t.customJS || "");
+
+			if (t.type === 'sampler') {
+				setElementValue('samp-start', t.trim[0]);
+				setElementValue('samp-end', t.trim[1]);
+				if (t.sampleId) {
+					drawWaveform(t.sampleId);
+				}
+			}
+			document.getElementById('tool-modal').style.display = 'flex';
+		}
+
+		/**
+		 * @param {string} sampleId Id personalizado del 
+		*/
+		async function loadSample(file, sampleId = null) {
+			if (!file)
+				return;
+
+			saveState();
+
+			// 1. Decodificar para reproducción en vivo
+			const buffer = await file.arrayBuffer();
+			const audioBuf = await A_CTX.decodeAudioData(buffer.slice(0));
+
+			if (!sampleId) {
+				sampleId = Date.now().toString();
+			}
+			sampleBuffers[sampleId] = audioBuf;
+
+			// 2. Convertir a Base64 y guardarlo en el estado del track
+			await new Promise((resolve, reject) => {
+				const reader = new FileReader();
+
+				reader.addEventListener('load', (evt) => {
+					s.tracks[actTrk].sampleBase64 = evt.target.result;
+					resolve(); // Avisamos que terminó
+				});
+
+				reader.addEventListener('error', (err) => reject(err)); // Manejo de errores
+
+				reader.readAsDataURL(file);
+			});
+
+			s.tracks[actTrk].sampleId = sampleId;
+			s.tracks[actTrk].trim = [0, audioBuf.duration];
+
+			console.log(audioBuf.duration);
+			setElementValue('samp-end', audioBuf.duration.toFixed(2));
+			drawWaveform(sampleId);
+		}
+
+		function drawWaveform(id) {
+			const buf = sampleBuffers[id];
+			if (!buf)
+				return;
+			const wc = document.getElementById('wave-canvas'), wCtx = wc.getContext('2d');
+			wCtx.clearRect(0, 0, wc.width, wc.height);
+			wCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+
+			const data = buf.getChannelData(0);
+			const step = Math.ceil(data.length / wc.width);
+			const amp = wc.height / 2;
+
+			wCtx.beginPath();
+			for (let i = 0; i < wc.width; i++) {
+				let min = 1.0, max = -1.0;
+				for (let j = 0; j < step; j++) {
+					const datum = data[(i * step) + j];
+					if (datum < min) min = datum;
+					if (datum > max) max = datum;
+				}
+				wCtx.moveTo(i, (1 + min) * amp); wCtx.lineTo(i, (1 + max) * amp);
+			}
+			wCtx.strokeStyle = '#3498db';
+			wCtx.stroke();
+		}
+
+		function saveCode() {
+			s.tracks[actTrk].customJS = document.getElementById('custom-code').value;
+			document.getElementById('tool-modal').style.display = 'none';
+		}
+
+		// Guardar Trim de Sampler al cambiar inputs
+		document.getElementById('samp-start').addEventListener('change', (e) => s.tracks[actTrk].trim[0] = parseFloat(e.target.value));
+		document.getElementById('samp-end').addEventListener('change', (e) => s.tracks[actTrk].trim[1] = parseFloat(e.target.value));
+
+		// --- SECUENCIADOR Y RENDERIZADO ---
+		let isPlay = false, cur = 0, nxtTime = 0, tid;
+
+		function sched() {
+			while (nxtTime < A_CTX.currentTime + 0.1) {
+				requestAnimationFrame(() => { draw(cur); });
+				const bus = createMasterBus(A_CTX, A_CTX.destination);
+
+				const isAnySolo = s.tracks.some(t => t.solo);
+
+				s.tracks.forEach(t => {
+					if (t.mute || (isAnySolo && !t.solo)) return;
+
+					// --- LÓGICA DE TRIGGERS DE AUTOMATIZACIÓN ---
+					// Buscar si en la columna actual (cur) hay un trigger para esta pista
+					if (t.triggers) {
+						t.triggers.filter(trig => trig.c === cur).forEach(trig => {
+							// Si el trigger es de volumen, cambiamos el volumen de la pista
+							if (trig.param === 'vol') t.vol = trig.val;
+							if (trig.param === 'flt') t.flt = trig.val;
+							if (trig.param === 'pan') t.pan = trig.val;
+							// (Aquí podrás programar luego transiciones lineales con Lerp)
+
+							buildTracks(); // Actualiza los sliders del UI mágicamente
+						});
+					}
+
+					t.notes.filter(n => n.c === cur).forEach(n => {
+						playNode(t, n.r, nxtTime, n.d * (15 / s.bpm), A_CTX, bus, n);
+					});
+				});
+				nxtTime += (15 / s.bpm); cur = (cur + 1) % s.steps;
+			}
+			tid = setTimeout(sched, 25);
+		}
+
+		function togglePlay() {
+			if (A_CTX.state === 'suspended') {
+				A_CTX.resume();
+				initReverb();
+			}
+			isPlay = !isPlay;
+			setElementText('play-btn', isPlay ? "⏸ PAUSE" : "▶ PLAY");
+			if (isPlay) {
+				if (cur === 0)
+					nxtTime = A_CTX.currentTime + 0.05;
+				sched();
+			} else {
+				clearTimeout(tid);
+			}
+		}
+
+		function stopPlay() {
+			isPlay = false;
+			clearTimeout(tid);
+			cur = 0;
+			setElementText('play-btn', "▶ PLAY");
+			draw(-1);
+		}
+
+		// --- SISTEMA DE GUARDADO/CARGA LOCAL (WIP) ---
+		function saveWIP() {
+			// Nota: Los buffers de audio crudos no se guardan en localStorage por tamaño. En una app real irían a IndexedDB.
+			const exportObj = JSON.parse(JSON.stringify(s));
+			const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj));
+			const a = document.createElement('a');
+			a.href = dataStr;
+			a.download = `${s.name}_WIP.json`;
+			document.body.appendChild(a);
+			a.click();
+			a.remove();
+		}
+
+		function recoverFromGD(e) {
+			const file = e.target.files[0];
+			if (!file)
+				return;
+			const reader = new FileReader();
+			reader.addEventListener('load', (evt) => {
+				try {
+					const gdData = JSON.parse(evt.target.result);
+					if (!gdData.tracks) throw "Formato Inválido";
+					// Reconstrucción heurística del proyecto
+					s.bpm = gdData.bpm || 128;
+					s.tracks = gdData.tracks.map((t, i) => {
+						const nTrack = createTrackObj(t.name || `Pista ${i + 1}`, t.type);
+						nTrack.vol = t.volume || 0.7;
+						nTrack.att = t.attack || 0.05;
+						nTrack.rel = t.release || 0.3;
+						nTrack.notes = t.notes.map(n => ({ r: n.r || Math.floor((Math.log2(n.freq / 440) * 12) + 57), c: n.step, d: 1, p: 0 }));
+						return nTrack;
+					});
+					buildUI();
+					alert("Proyecto recuperado con éxito.");
+				} catch (err) {
+					alert("El archivo no es una canción exportada válida de GD.");
+				}
+			});
+			reader.readAsText(file);
+		}
+
+		function loadProject(e) {
+			const file = e.target.files[0];
+			if (!file)
+				return;
+
+			const reader = new FileReader();
+			reader.addEventListener('load', async (evt) => {
+				try {
+					s = JSON.parse(evt.target.result);
+
+					// Rehidratar los audios Base64
+					for (let t of s.tracks) {
+						if (t.type === 'sampler' && t.sampleBase64) {
+							const res = await fetch(t.sampleBase64);
+							const buf = await res.arrayBuffer();
+							sampleBuffers[t.id.toString()] = await A_CTX.decodeAudioData(buf);
+							t.sampleId = t.id.toString(); // Reconectar ID
+						}
+					}
+					buildUI();
+					alert("Project loaded succesfully. Samples loaded succesfully.");
+				}
+				catch (err) {
+					alert(`Error cargando el archivo: ${err.message}`);
+				}
+			});
+			reader.readAsText(file);
+		}
+
+		function exportJSON() {
+			const a = document.createElement('a');
+			a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(s));
+			a.download = `${s.name}_gd.json`;
+			document.body.appendChild(a);
+			a.click();
+			a.remove();
+		}
+
+		async function exportWAV() {
+			alert("Rendering audio...\nDo NOT close the DAW player. (You can close this popup tho)");
+			initReverb();
+
+			const safeBpm = isFinite(s.bpm) && s.bpm > 0 ? s.bpm : 128;
+
+			const sps = 15 / safeBpm;
+			const totalDur = (s.steps * sps) + 2.0;
+
+			const S_RATE = A_CTX.sampleRate;
+
+			const offCtx = new OfflineAudioContext(2, S_RATE * totalDur, S_RATE);
+			const master = createMasterBus(offCtx, offCtx.destination);
+
+			s.tracks.forEach(t => {
+				t.notes.forEach(n => {
+					playNode(t, n.r, n.c * sps, n.d * sps, offCtx, master, { p: n.p, eq: n.eq });
+				});
+			});
+
+			const renderedBuffer = await offCtx.startRendering();
+			const wavData = audioBufferToWav(renderedBuffer);
+			const blob = new Blob([new DataView(wavData)], { type: 'audio/wav' });
+			const a = document.createElement('a');
+			a.href = URL.createObjectURL(blob);
+			a.download = `${s.name || 'DAW_Project'}.wav`;
+			document.body.appendChild(a);
+			a.click();
+			a.remove();
+		}
+
+		function audioBufferToWav(buffer) {
+			const numChannels = buffer.numberOfChannels, sampleRate = buffer.sampleRate, format = 1, bitDepth = 16;
+			const result = new Float32Array(buffer.length * numChannels);
+			for (let i = 0; i < numChannels; i++) {
+				const chan = buffer.getChannelData(i);
+				for (let j = 0; j < buffer.length; j++) {
+					result[j * numChannels + i] = chan[j];
+				}
+			}
+			const dataSize = result.length * (bitDepth / 8);
+			const bufferArr = new ArrayBuffer(44 + dataSize);
+			const view = new DataView(bufferArr);
+			const writeStr = (pos, str) => {
+				for (let i = 0; i < str.length; i++) {
+					view.setUint8(pos + i, str.charCodeAt(i));
+				}
+			};
+
+			writeStr(0, 'RIFF');
+			view.setUint32(4, 36 + dataSize, true);
+			writeStr(8, 'WAVE');
+			writeStr(12, 'fmt ');
+			view.setUint32(16, 16, true);
+			view.setUint16(20, format, true);
+			view.setUint16(22, numChannels, true);
+			view.setUint32(24, sampleRate, true);
+			view.setUint32(28, sampleRate * numChannels * (bitDepth / 8), true);
+			view.setUint16(32, numChannels * (bitDepth / 8), true);
+			view.setUint16(34, bitDepth, true);
+			writeStr(36, 'data');
+			view.setUint32(40, dataSize, true);
+
+			let offset = 44;
+			for (let i = 0; i < result.length; i++) {
+				let s = Math.max(-1, Math.min(1, result[i]));
+				view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+				offset += 2;
+			}
+			return bufferArr;
+		}
+
+		// --- SISTEMA DE AUTOGUARDADO (LocalStorage) ---
+		function autoSave() {
+			if (s.tracks.length > 0) {
+				localStorage.setItem('daw_autosave_project', JSON.stringify(s));
+				console.log("Autosave completed: " + new Date().toLocaleTimeString());
+			}
+		}
+		setInterval(autoSave, 15000); // Autoguardar cada 15 segundos
+
+		setTimeout(() => {
+			const saved = localStorage.getItem('daw_autosave_project');
+			if (saved && confirm("Se ha encontrado un autoguardado reciente. ¿Deseas restaurar la sesión?")) {
+				try {
+					s = JSON.parse(saved);
+				} catch (e) {
+					console.error("Error leyendo autoguardado");
+				}
+			}
+			buildUI();
+		}, 500);
+
+		function initEventListeners() {
+			console.log("Adding the layout listeners...");
+
+			document.getElementById('play-btn').addEventListener('click', togglePlay);
+			document.getElementById('stop-btn').addEventListener('click', stopPlay);
+
+			document.getElementById('btn-undo').addEventListener('click', undo);
+			document.getElementById('btn-redo').addEventListener('click', redo);
+
+			document.getElementById('bpm').addEventListener('change', (e) => {
+				saveState();
+				s.bpm = Math.max(1, parseInt(String(e.target.value).replace(/[,]/g, ".")) || 128); // Si es 0 o NaN, fuerza 128
+			});
+			document.getElementById('steps').addEventListener('change', () => {
+				saveState();
+				resizeGrid();
+			});
+			document.getElementById('song_name').addEventListener('change', (e) => {
+				saveState();
+				s.name = String(e.target.value);
+			});
+			document.getElementById('grid-snap').addEventListener('change', e => snapRes = parseFloat(String(e.target.value).replace(/[,]/g, '.')));
+
+			document.getElementById('save-template').addEventListener('click', saveTemplateFromSelection);
+			document.getElementById('user-templates').addEventListener('change', (e) => { insertUserTemplate(e.target.value); });
+
+			document.getElementById('add-track').addEventListener('click', () => {
+				saveState();
+				addTrack();
+			});
+			document.getElementById('mobile-tool-select').addEventListener('change', (e) => { mobileTool = e.target.value; });
+			document.getElementById('show-wave').addEventListener('change', () => { draw(); });
+
+			document.getElementById('load-project').addEventListener('change', (e) => { loadProject(e); });
+			document.getElementById('save-project').addEventListener('click', saveWIP);
+
+			// --- MIDI ---
+			function addMIDILibrary() {
+				const libraryScript = document.createElement('script');
+				libraryScript.src = "https://unpkg.com/@tonejs/midi";
+				libraryScript.type = 'text/javascript';
+
+				document.head.append(libraryScript);
+			}
+			document.getElementById('import-midi').addEventListener('change', async (e) => {
+				const file = e.target.files[0];
+				if (!file)
+					return;
+
+				// Si el usuario ha bloqueado la importación de la librería MIDI
+				if (typeof Midi === 'undefined') {
+					alert("Your browser has blocked the MIDI library.\nAny actions related to MIDI files can't be done.\nTrying to enable the MIDI library...");
+					addMIDILibrary();
+					return;
+				}
+
+				const reader = new FileReader();
+
+				reader.addEventListener('load', async (ev) => {
+					saveState(); // Punto de restauración
+					const midiData = new Midi(ev.target.result);
+
+					midiData.tracks.forEach(track => {
+						if (track.notes.length > 0) {
+							// Creamos una nueva pista para cada instrumento MIDI
+							const newTrk = createTrackObj(track.name || 'MIDI Track', 'sine');
+							newTrk.displayMode = 'melodic';
+
+							track.notes.forEach(note => {
+								// Convertimos el tiempo absoluto (segundos) a columnas del Piano Roll (basado en el BPM actual)
+								const ticksPerSec = s.bpm / 15;
+								const c = Math.round(note.time * ticksPerSec);
+								const d = Math.max(1, Math.round(note.duration * ticksPerSec));
+								const r = note.midi; // Tono MIDI (ej. 60 es Do Central / C4)
+
+								newTrk.notes.push({ r, c, d, p: 0, vol: note.velocity, cHex: '#3498db' });
+							});
+							s.tracks.push(newTrk);
+						}
+					});
+					buildTracks(); draw();
+					alert("¡MIDI Importado con éxito!");
+				});
+				reader.readAsArrayBuffer(file);
+			});
+
+			document.getElementById('export-midi').addEventListener('click', () => {
+				if (typeof Midi === 'undefined') {
+					alert("Your browser has blocked the MIDI library.\nAny actions related to MIDI files can't be done.\nTrying to enable the MIDI library...");
+					addMIDILibrary();
+					return;
+				}
+
+				const midi = new Midi();
+				midi.header.setTempo(s.bpm);
+
+				s.tracks.forEach(t => {
+					const track = midi.addTrack();
+					track.name = t.name;
+					t.notes.forEach(n => {
+						// Convertimos columnas del Piano Roll de vuelta a segundos
+						const ticksPerSec = s.bpm / 15;
+						const time = n.c / ticksPerSec;
+						const dur = n.d / ticksPerSec;
+						track.addNote({ midi: n.r, time: time, duration: dur, velocity: n.vol || 0.8 });
+					});
+				});
+
+				const blob = new Blob([midi.toArray()], { type: "audio/midi" });
+				const a = document.createElement("a");
+				a.href = URL.createObjectURL(blob);
+				a.download = `${s.name || 'Proyecto'}.mid`;
+				a.click();
+			});
+
+			document.getElementById('import-gd').addEventListener('change', (e) => {
+				saveState();
+				recoverFromGD(e);
+			});
+			document.getElementById('export-gd').addEventListener('click', exportJSON);
+			document.getElementById('export-wav').addEventListener('click', exportWAV);
+
+			document.getElementById('delete-track').addEventListener('click', () => {
+				saveState();
+				document.getElementById('tool-modal').style.display = 'none';
+			});
+
+			document.getElementById('load-audio').addEventListener('change', (e) => { loadSample(e.target.files[0]); });
+
+			document.getElementById('save-and-compile').addEventListener('click', saveCode);
+
+			document.getElementById('open-library').addEventListener('click', openLibrary);
+			document.getElementById('close-library').addEventListener('click', () => { document.getElementById('library-modal').style.display = 'none'; });
+
+			document.getElementById('tracks-container').addEventListener('change', (e) => {
+				saveState();
+				if (e.target.classList.contains('group-input')) {
+					const oldName = e.target.getAttribute('data-group-name');
+					const newName = e.target.value;
+					renameGroup(oldName, newName);
+				}
+			});
+
+			//----- CONTEXT MENU -----
+			// Abrir menú con clic derecho si hay selección
+			cvs.addEventListener('contextmenu', e => {
+				e.preventDefault();
+				if (selection.length > 0) {
+					showContextMenu(e);
+				}
+			});
+
+			// Ocultar al hacer clic normal
+			document.addEventListener('click', e => {
+				if (e.button !== 2 && !e.target.closest('#ctx-menu')) {
+					hideContextMenu();
+				}
+			});
+
+			// Copiar
+			document.getElementById('ctx-copy').addEventListener('click', () => {
+				clipboard = JSON.parse(JSON.stringify(selection));
+				if (clipboard.length > 0) {
+					const minC = Math.min(...clipboard.map(n => n.c));
+					clipboard.forEach(n => n.c -= minC);
+				}
+				hideContextMenu();
+			});
+
+			// Duplicar
+			document.getElementById('ctx-dup').addEventListener('click', () => {
+				saveState();
+
+				const t = s.tracks[actTrk];
+				const clones = JSON.parse(JSON.stringify(selection));
+				// Duplica justo al final de la selección original
+				const maxC = Math.max(...clones.map(n => n.c + n.d));
+				const minC = Math.min(...clones.map(n => n.c));
+				const offset = maxC - minC;
+				clones.forEach(n => {
+					n.c += offset;
+					t.notes.push(n);
+				});
+				selection = clones;
+				draw();
+				hideContextMenu();
+			});
+
+			// Dividir
+			document.getElementById('ctx-split').addEventListener('click', () => {
+				saveState();
+
+				const t = s.tracks[actTrk];
+				const newNotes = [];
+				selection.forEach(n => {
+					if (n.d > 1) {
+						const half = Math.floor(n.d / 2);
+						n.d = half; // Acorta la primera mitad
+						newNotes.push({ r: n.r, c: n.c + half, d: n.d, p: n.p, cHex: n.cHex, vol: n.vol });
+					}
+				});
+				t.notes.push(...newNotes);
+				draw();
+				hideContextMenu();
+			});
+
+			// Color
+			document.getElementById('ctx-color').addEventListener('click', () => {
+				const col = prompt("Color HEX para las notas (#ff0000):", "#ffffff");
+				if (col) {
+					saveState();
+					selection.forEach(n => n.cHex = col);
+					draw();
+				}
+				hideContextMenu();
+			});
+
+			// Tono
+			document.getElementById('ctx-pitch').addEventListener('click', () => {
+				const shift = parseInt(prompt("Semitones to add to selection.\nUse positive numbers for up, use negatives for down.", "0").replace(/[,]/g, "."));
+				if (!isNaN(shift)) {
+					saveState();
+
+					selection.forEach(n => n.r -= shift);
+					draw();
+				}
+				hideContextMenu();
+			});
+
+			// Mover
+			document.getElementById('ctx-move').addEventListener('click', () => {
+				const shiftInput = prompt("Amount of steps to add to selection.\nUse positive numbers for right, use negatives for left.", "0");
+				const shift = parseInt(shiftInput.replace(/[,]/, "."));
+
+				if (!isNaN(shift)) {
+					saveState();
+
+					selection.forEach(n => {
+						// Aplicamos el movimiento y evitamos que las notas se vayan a un tiempo negativo (antes del 0)
+						n.c = Math.max(0, n.c + shift);
+					});
+					draw(); // Actualizamos la pantalla
+				}
+				hideContextMenu();
+			});
+
+			// Volumen
+			document.getElementById('ctx-vol').addEventListener('click', () => {
+				const v = prompt("Individual volumen to set to selection. (0 to 1):", "1").replace(/[,]/g, ".");
+				if (v && !isNaN(v)) {
+					saveState();
+
+					selection.forEach(n => n.vol = parseFloat(v));
+				}
+				hideContextMenu();
+			});
+
+			document.getElementById('ctx-trigger').addEventListener('click', () => {
+				if (selection.length === 0) return;
+
+				const param = prompt("Parameter to change\n'vol', 'flt' or 'pan'", "vol");
+				const val = parseFloat(prompt(`New parameter of ${param}:`, "0.5"));
+
+				if (param && !isNaN(val)) {
+					saveState();
+					const t = s.tracks[actTrk];
+					if (!t.triggers) t.triggers = []; // Por si es una pista vieja
+
+					// Añadimos el trigger en la columna de la primera nota seleccionada
+					t.triggers.push({ c: selection[0].c, param: param, val: val });
+					alert(`Added new Trigger in Beat ${(selection[0].c / 16) + 1} with parameter ${param} with value ${val}.`);
+				}
+				document.getElementById('ctx-menu').style.display = 'none';
+			});
+
+			// Eliminar
+			document.getElementById('ctx-del').addEventListener('click', () => {
+				saveState();
+
+				const t = s.tracks[actTrk];
+				t.notes = t.notes.filter(n => !selection.includes(n));
+				selection = [];
+				draw();
+				hideContextMenu();
+			});
+
+			// Play
+			document.getElementById('ctx-play').addEventListener('click', () => {
+				// Escuchar únicamente la selección (aislada)
+				const bus = createMasterBus(A_CTX, A_CTX.destination);
+				const t = s.tracks[actTrk];
+				selection.forEach(n => {
+					// Empezamos la reproducción en 0.5s desde ahora para compensar
+					playNode(t, n.r, A_CTX.currentTime + 0.1, n.d * (15 / s.bpm), A_CTX, bus, { p: n.p, eq: n.eq });
+				});
+				hideContextMenu();
+			});
+		}
+
+		function init() {
+			initEventListeners();
+		}
+
+		// ------------CLOUD LIBRARY CODE (es... largo.) ------------
+		function openLibrary() {
+			// Lista de las CATEGORÍAS de sonidos.
+			const cloudLibrary = [
+				{
+					categoryName: "Household", categoryColor: 'blue', sounds: [
+						"aluminum_can_crunch_series", "bacon_out_of_package", "bacon_peel_and_flop", "baking", "bottles_empty_close", "bottles_empty_far", "bowl_spin", "bowls_on_table", "button_push", "cans_into_cabinet", "cell_phone_vibrate", "chopping_vegetables", "clock_ticking", "creaky_oven_door_open", "cup_on_saucer", "dish_sliding_on_table", "dishes_laid_on_table", "dishes_shuffling", "door_cabinet", "drawer_open_close", "drawer_rolling_in_out", "electric_tooth_brush", "electric_tooth_brush_switch", "fireplace_tools", "floating_ice_in_a_glass", "freezer_ice_into_plastic_cup", "fridge_door_swing_open", "full_glass_on_wood_table", "gas_lamp_flickering", "gas_lamps", "gas_stove_lighter", "glass_sliding_on_table", "glass_on_tablecloth", "glosing_old_window", "hairdryer", "hairdryer_in_other_room", "hands_touching_sink", "hanger_in_closet", "hanging_wet_sheet", "ice_cubes_in_glass", "ice_in_glass_of_water", "ice_machine_into_cup", "kettle_boil", "kitchen_drawer", "kitchen_noises", "knife_cuting_food_on_plate", "knife_cutting_and_rattle", "knife_on_wood_table", "lam_switch_far", "lamp_switch_near", "lamp_switch_on_off", "latch_opening_closing", "laundry_basket_actions", "long_silence_at_top", "meat_preparation", "metal_cleaning", "metal_container_on_wood_table", "metal_gear_shifting", "metal_scrap_kicking", "metal_scrap_rattling", "metal_shuffling", "metal_spoon_scrapes_pot", "open_and_close_window", "opening_plastic_storage_container", "oven_pans", "pans_clash", "paper_towel_rip", "phone_ringing", "phone_ringing_untraditional", "plastic_crumpling", "plastic_hanger_swinging", "plate_ceramic", "porcelain_bowl_counter_series", "porcelain_bowl_drag_series", "porcelain_bowl_drop_short_series", "porcelain_bowl_slide_series", "pot_on_stove_metal", "pots_bang", "pour_boiling_water_into_cup", "projector_screen_fast_pull", "projector_screen_handle_squeak", "projector_screen_medium_pull", "projector_screen_slow_pull", "reaching_for_napkins", "refridgerator_rumaging", "scraping_metal", "scrubbing_metal", "sheet_flap_in_large_hall", "shower_curtain_pulled_series", "silverware_on_bowl", "silverware_on_plate", "silverware_on_table", "skillet_spins_on_burner", "sliding_window_aggressive", "sliding_window_latching", "sliding_window_series", "slotted_blinds_open_and_close", "slotted_blinds_opening", "small_drawer_open_close", "spatula_down_knife_up", "spice_jar_on_tile_floor", "spoon_on_bowl", "spray_bottle", "sweeping_wooden_porch", "telephone_ring", "toilet_flush_small_bathroom", "toilet_flush_through_closed_door", "toliet_flush", "toliet_flush_far", "toliet_flush_very_close", "toliet_seat_closing_series", "typing_keyboard", "vegetables_down_on_counter_series", "vegetables_mixing_in_metal_bowl", "vibrate_on_wood", "walking_cleats", "wall_light_switch_close", "wall_light_switch_far", "wall_light_switch_medium", "washing_machine_door", "water_movement_in_bath", "wet_squeak_rub_on_bathtub", "wet_towel_wring", "wheeling_a_cart", "wind_chimes_of_shells", "wind_drawn_into_fire", "window_close_series", "window_latch_open_series", "wine_bottle_on_wood_table", "wine_bottles_clinking", "wineglass_on_wood_soft", "wood_scraps_shuffling"]
+				},
+				{
+					categoryName: "Foley", categoryColor: 'blue', sounds: [
+						"aluminum_can_open", "arm_movement_on_desk", "bare_feet_scuff_wood", "bare_feet_walk", "bare_feet_walk_on_wood", "battle_ground_movement", "battle_movement_pass_by", "body_in_car", "bottle_cap_open", "bottle_cork", "bottles_clanking", "branch_and_leaves", "buckle", "cap_covering_uncovering", "cassette_tape_button", "cassette_tape_motor", "cassette_tape_play", "cassette_tape_rewind", "chain_on_metal_post", "change_drop_on_wood", "child_toy_chime_clinck_and_clanks", "chopping_in_forest", "clean_up_spill", "climbing_stairs", "clip", "coins_shuffling", "cork_in_out_bottle_squeek_series", "cotton_rip", "crushing_pills", "cutting_fruit", "dancing_shoes_on_tile", "dancing_the_charelston", "deep_cross_on_wood", "dial_turning", "dishes_rattle", "distant_footsteps_on_wood", "dragging_on_gravel", "drawing_on_paper_with_charcoal", "dress_shoe_jog_on_gravel", "dress_shoe_jog_on_wood", "dress_shoe_run_on_concrete", "dress_shoe_run_on_gravel", "dress_shoe_run_on_wood", "dress_shoe_sidestep_on_gravel", "dress_shoe_sidestep_on_light_grit", "dress_shoe_sidestep_on_wood", "dress_shoe_stumble_concrete", "dress_shoe_stumble_gravel", "dress_shoe_stumble_light_grit", "dress_shoe_stumble_wood", "dress_shoe_turn_concrete", "dress_shoe_turn_gravel", "dress_shoe_turn_wood", "dress_shoe_walk_light_grit", "dress_shoe_walk_solid_wood", "dress_shoe_walking_down_stairs", "dress_shoes_walk_stairs", "dress_shoes_on_concrete_stairs", "dress_shoes_on_stairs_concrete", "dress_shoes_on_stairs_wood", "dress_shoes_on_wood_stairs", "dress_shoes_up_stairs_concrete", "dress_shoes_up_stairs_wood", "dress_shoe_jog_on_concrete", "drink_and_swallow", "drinking_from_water_fountain", "dropping_object_in_bathroom", "dry_off_with_towel", "drying_hands_on_towel", "dumping_gravel", "eating_a_juicy_piece_of_fruit", "feeling_paper", "finger_nails_scratch_wood", "flip_flops_on_concrete", "flip_flops_on_wood", "flipping_newspaper_pages", "foam_board_plased_on_easel", "footsteps_concrete", "footsteps_dirt", "footsteps_gravel", "footsteps_grit", "footsteps_on_fallen_leaves", "footsteps_solid_wood", "glass_drop_and_roll", "glass_fill_at_sink", "hand_claps_close", "hand_claps_far", "hand_claps_medium", "hand_rub", "hand_wipe", "handle_manilla_folder", "hanger_on_metal", "hard_sole_shoes_on_wood_floor", "high_heels_walking_series", "hiking_in_forest", "hit_and_rattle", "hollow_hitting", "hula_hoop_hulaing", "inkwell_and_pen_tap", "jog_down_concrete_stairs", "jog_down_solid_wood_stairs", "jog_on_grit", "jog_on_hollow_wood", "jog_on_solid_wood", "jog_up_concrete_stairs", "jog_up_solid_wood_stairs", "jog_up_stairs_concrete", "jog_up_stairs_wood", "jog_on_concrete", "jog_on_rocks", "jog_on_wood", "jump_on_concrete", "jump_on_dirt", "jump_on_grass", "jump_on_hollow_wood", "jump_on_metal_gate", "jump_on_rocks", "jump_on_soggy_grass", "jump_on_solid_metal", "jump_on_tile", "jump_onto_blanket", "jumping_on_dirt", "karate_hit", "knife_chop_on_wood", "knife_sharpen", "knuckle_crack", "ladle_food_into_carton", "latch_opening_closing", "leaves_rustling_series", "lettuce_peeling", "light_splashing_of_water", "lighter_flick", "lindyhop", "load_dishwasher", "machine_sounds_halt_slowly", "metal_hand_cuff", "metal_hits", "metal_hits_and_stop", "metal_rattling_rhythmically", "metal_scrap_kicking", "metal_scrap_rattling", "metal_sheets_sliding", "object_grating_metal", "objects_in_plastic_bottle", "pace_quickly_on_wood", "packing_boxes", "pants_whooshing", "paper_bag_opening", "paper_crunching", "paper_folding", "paper_ripping", "paper_scraps_cut", "paper_stacking", "papers_rustling_in_the_wind", "peeling_food_with_peeler", "pen_drawing", "pen_writing", "pill_bottles_in_cabinet", "plastic_crumpling", "plastic_grovery_bag_movement", "play_in_pile_of_leaves", "pull_tissue_from_box", "punch_cloth_series", "punch_swoosh_series", "put_cap_on_pen", "quill_pen_writing", "radiation_suit_on_off", "radiation_suit_rustle", "radio_static", "rake_swing_whoosh_close", "rake_swing_whoosh_hall", "rope_creaking_holding_weight", "rub_head", "rubber_shoe_squeal_exaggerated", "rubber_shoe_walking_squeal", "rubbing_smooth_object_series", "rubble_breaking", "run_in_mud", "run_on_gravel", "run_on_solid_wood", "run_in_dirt", "run_on_concrete", "run_on_grit", "run_on_wood", "running_into_the_woods", "running_on_concrete", "running_on_dirt", "running_on_grass", "running_on_gravel", "running_on_leaves", "running_on_metal_grate", "running_on_rocks", "running_on_tile", "running_with_recorder_in_pocket", "running_on_wet_surface", "rustling_leaves", "scraping_on_paper", "screwing_in_light_bulb", "scuff_concrete_with_heels", "scuff_gravel_with_heels", "scuff_gravel_with_soles", "scuff_grit_with_heels", "scuff_hollow_wood_with_heels", "scuff_solid_wood_with_heels", "scuff_turnaround_on_wood", "scuff_wood_with_soles", "scuff_on_concrete_series", "scuff_on_metal_grate", "scuffing_on_dirt", "scuffing_on_gravel", "scuffing_on_stone", "scuffing_on_tile", "scuffing_on_cement", "searching_bathroom_cupboard", "sheet_rip_thin_series", "sheet_woosh_thin", "shifting_on_couch_series", "shoe_scuffing_on_gravel", "shoe_scuffing_on_wood", "shoe_scuff_dirt", "shoe_scuff_grit", "shoe_scuff_hollow_wood", "shoe_scuff_solid_wood", "shuffling_feet_concrete", "shuffling_feet_grass", "shuffling_feet_gravel", "shuffling_feet_metal_grate", "shuffling_feet_metal_plank", "shuffling_high_heels", "sidestep_on_concrete", "sidestep_on_gravel", "sidestep_on_grit", "sidestep_on_hollow_wood", "sipping_hot_liquid", "slapping_stone", "slicing_produce_on_plate", "slide", "slide_on_concrete_series", "slide_on_dirt_series", "slide_on_gravel_series", "slide_on_leaves", "slide_on_metal_plank_series", "slide_on_rock_series", "slide_on_snow_series", "slide_on_tile_series", "sliding_hangers", "sliding_on_dirt", "slippers_shuffle_on_carpet", "slurping_series", "smoothing_cloth_on_table", "sneaker_fast_walk_concrete", "sneaker_fast_walk_gravel", "sneaker_fast_walk_hollow_wood", "sneaker_fast_walk_light_grit", "sneaker_fast_walk_solid_wood", "sneaker_foot_slides_concrete", "sneaker_foot_slides_hollow_wood", "sneaker_foot_slides_light_grit", "sneaker_foot_slides_solid_wood", "sneaker_jog_concrete", "sneaker_jog_dirt", "sneaker_jog_gravel", "sneaker_jog_hollow_wood", "sneaker_jog_light_grit", "sneaker_jog_solid_wood", "sneaker_jump_hollow_wood", "sneaker_jump_solid_wood", "sneaker_large_hollow_wood", "sneaker_large_jumps_concrete", "sneaker_large_jumps_dirt", "sneaker_large_jumps_light_grit", "sneaker_large_jumps_rough_grit", "sneaker_large_jumps_solid_wood", "sneaker_long_foot_slides_dirt", "sneaker_medium_jump_concrete", "sneaker_medium_jump_dirt", "sneaker_medium_jump_grit", "sneaker_medium_jump_light_grit", "sneaker_medium_jumps_grit", "sneaker_medium_jumps_wood", "sneaker_medium_solid_jumps_dirt", "sneaker_run_hollow_wood", "sneaker_scuf_concrete", "sneaker_scuf_dirt", "sneaker_scuf_hollow_wood", "sneaker_scuf_light_grit", "sneaker_scuf_sollid_wood", "sneaker_sidestep_hollow_wood", "sneaker_sidesteps_concrete", "sneaker_sidesteps_dirt", "sneaker_sidesteps_light_grit", "sneaker_sidesteps_rough_grit", "sneaker_sidesteps_solid_wood", "sneaker_small_jump_concrete", "sneaker_small_jump_dirt", "sneaker_small_jump_light_grit", "sneaker_small_jump_rough_grit", "sneaker_small_jump_solid_wood", "sneaker_small_jumps_concrete", "sneaker_small_jumps_solid_wood", "sneaker_small_solid_jumps_dirt", "sneaker_small_solid_jumps_grit", "sneaker_solid_jump_hollow_wood", "sneaker_solid_jumps_concrete", "sneaker_stairs_jog_concrete", "sneaker_stairs_run_concrete", "sneaker_stairs_run_wood", "sneaker_stairs_up_jog_concrete", "sneaker_stairs_up_run_concrete", "sneaker_stairs_up_run_solid_wood", "sneaker_stairs_up_walk_concrete", "sneaker_stairs_walk_concrete", "sneaker_stairs_walk_jog", "sneaker_stairs_walk_solid_wood", "sneaker_stairs_walk_wood", "sneaker_stumble_concrete", "sneaker_stumble_forward_dirt", "sneaker_stumble_forward_grit", "sneaker_stumble_forward_wood", "sneaker_stumble_side_concrete", "sneaker_stumble_side_dirt", "sneaker_stumble_side_light_grit", "sneaker_stumble_side_rough_grit", "sneaker_stumble_side_solid_wood", "sneaker_toe_slides_concrete", "sneaker_toe_slides_dirt", "sneaker_toe_slides_hollow_wood", "sneaker_toe_slides_light_grit", "sneaker_toe_slides_solid_wood", "sneaker_turnaround_concrete", "sneaker_turnaround_dirt", "sneaker_turnaround_hollow_wood", "sneaker_turnaround_light_grit", "sneaker_turnaround_rough_grit", "sneaker_turnaround_solid_wood", "sneaker_walk_concrete", "sneaker_walk_dirt", "sneaker_walk_hollow_wood", "sneaker_walk_light_grit", "sneaker_walk_solid_wood", "sneaker_in_soggy_grass_series", "sneaker_in_shallow_water_series", "sneaker_mount_stumble_concrete", "sneaker_mount_stumble_dirt", "sneaker_mount_stumble_hollow_wood", "sneaker_mount_stumble_light_grit", "sneaker_mount_stumble_rough_grit", "sneaker_mount_stumble_solid_wood", "sneaker_on_concrete_series_fast", "sneaker_on_concrete_series_slow", "sneaker_on_dirt_series_slow", "sneaker_on_grass_series_slow", "sneaker_on_metal_grate_series", "sneaker_on_rock_debris_series", "sneakers_on_plastic_sheeting", "sneakers_on_tile", "sneakers_run_concrete", "sneakers_run_dirt", "sneakers_run_gravel", "sneakers_run_light_grit", "sneakers_run_wood", "soap_pickup", "socks_on_wood_scuf", "socks_on_wood_start_and_stop", "socks_on_wood_turns", "soft_soles_on_wood_porch", "soft_walk_on_wood_and_tile", "soft_walking_on_wood", "soggy_steps", "splashing_water", "splashing_water_fast", "spring_walking_in_snow", "stairs", "stick_break", "stirring_liquid_in_glass", "stomp_in_gravel", "stomping_around_room", "stringing_christmas_tree_lights", "stumble_concrete", "stumble_dirt", "stumble_grit", "stumble_hollow_wood", "stumble_on_gravel", "stumble_on_solid_wood", "stumble_solid_wood", "styrofoam_carton", "swoosh", "tamping_soil", "tap", "thumb_suck_series", "tools_scraping", "tossing_wood_series", "turnaround_on_concrete", "turnaround_on_gravel", "turnaround_on_hollow_wood", "tweeter_electric_static", "urination_behind_door", "urination_in_bathroom", "using_cardboard", "using_thick_paper", "walk", "walk_barefoot_on_wood", "walk_dirt", "walk_down_concrete_stairs", "walk_down_solid_wood_stairs", "walk_fast_on_concrete_series", "walk_fast_on_gravel_series", "walk_fast_on_hollow_wood_series", "walk_gravel", "walk_on_dirt", "walk_on_gravel", "walk_on_hollow_wood", "walk_on_light_grit", "walk_turn_concrete", "walk_turn_dirt", "walk_turn_gravel", "walk_turn_grit", "walk_turn_hollow_wood", "walk_up_concrete_stairs", "walk_up_hollow_wood_stairs", "walk_up_stairs", "walk_up_stairs_concrete", "walk_up_stairs_wood", "walk_in_shallow_water_series", "walk_on_dirt_series", "walk_on_grass_series", "walk_on_hollow_wood_series", "walk_on_muddy_gravel_series", "walk_on_rocks", "walk_on_snow_series", "walk_on_soggy_grass_series", "walk_on_solid_metal_series", "walk_on_tile_series", "walking_barefoot_over_grass", "walking_fast_on_tile", "walking_in_a_mud_puddle", "walking_in_forest", "walking_in_shallow_water", "walking_on_gravel_path", "walking_tile_to_carpet", "walking_wood_floor_house", "walking_fast_on_concrete", "walking_fast_on_dirt", "walking_fast_on_grass", "walking_fast_on_metal_grate", "walking_fast_on_muddy_grass", "walking_fast_on_rock_debris", "walking_fast_over_hollow_metal", "walking_in_shallow_snow", "walking_in_shallow_water", "walking_in_snow", "walking_on_concrete_series", "walking_on_grass", "walking_on_gravel", "walking_on_muddy_grass", "walking_on_rock_debris", "walking_on_wood", "walking_on_wood_floor", "walking_over_hollow_metal", "walking_through_woods", "wash_hands_running_water", "washing_hands_no_sink", "washing_hands_water_off", "water_splashes_series", "water_splashing", "water_walk_series_sweetener", "wet_shoes_walking_series", "wind_whip", "wine_glass_sip", "wiping_off_counter", "wiping_out_sink_with_hand", "wood_pencil_drop_roll_wobble", "wood_scraps_shuffling", "wood_tapping_on_board", "wooden_bead_hitting_series", "zipper", "drawing_on_paper_with_pencil"]
+				},
+				{
+					categoryName: "Horror", categoryColor: 'blue', sounds: [
+						"aggressive_zombie_snarls", "alien_squawk_echo", "ambient_hum_pitched", "carcass_shake_rib_cage", "carving_wet_scrape", "cut_and_handle_meat", "cutting_flesh", "cutting_fresh_meat", "cutting_and_chopping_faint", "dissecting_a_body", "drop_meat", "female_monster_attacking", "female_monster_growls", "hallow_wind", "hand_digging_through_guts", "leg_bone_break", "leg_bone_break_and_twist", "liquid_spurt", "meat_punch", "meat_stick_hit", "monster_alien_growl_calm", "monster_alien_growl_pained", "monster_alien_growl_tense", "monster_alien_grunt", "monster_alien_grunt_hiss", "monster_alien_grunt_sleepy", "peeling_skin_from_bone", "peeling_skin_off_of_game", "pulling_bone_cracks", "puncture_pop", "ring_high_pitch", "ripping_pulling_meat", "sawing_leg_bone", "sawing_skin_cut", "scraping_skin_cut", "shoulder_move_on_dead_body", "skil_saw_hit_on_body", "swoosh", "synthetic_insects", "twist_and_break_spine", "water_spray_on_body_steady_stream", "wet_leg_cut_off", "wet_meat_cut_and_rip", "wet_meat_cutting_and_peeling", "wet_meat_twist", "wet_meat_twist_and_rip", "wet_tearing_meat"]
+				},
+				{
+					categoryName: "Human Voices", categoryColor: 'blue', sounds: [
+						"babies_coo", "babies_cry", "baby_cry_cough", "baby_cry_long", "baby_sleep_breaths", "baby_whine", "breathing_echo_space", "breathing_running", "breathing_deep_fast", "death_impact_yell_multiple", "death_impact_yell_single", "death_rattle_breath", "eating_and_slurping", "human_breathing", "human_breathing_mouth", "human_breathing_nose", "human_burp", "human_eating_peach", "human_eating_watermelon", "human_fart", "human_nose_sniffing", "lip_smacks", "male_burps", "male_chuckling", "male_clearing_throat", "male_cough", "male_crying", "male_dramatic_crying", "male_sick_breathing", "male_sneeze", "male_sneezing_into_arm", "male_sniffles", "man_laugh_and_knee_slap", "pa_announcement_close", "short_breath_series", "sniffle", "summer_beach_ambience"]
+				},
+				{
+					categoryName: "Impacts", categoryColor: 'blue', sounds: [
+						"bamboo_drop_and_tumble", "blinds_pulling_up", "body_punch_series", "broken_plates", "cans_into_bag", "car_impact_and_scrape", "chain_jingle", "chop", "chopping_hollow_tree", "chopping_tree", "closing_dumpster_door", "counting_cans_close", "counting_cans_far", "crash", "crash_impact_sweetener", "crash_metal_plate_big_room", "crash_metal_sliding_on_metal", "crash_metal_sweetener_distant", "crash_ribbon_steel_big_crash", "crash_ribbon_steel_sweetener", "crash_spinning_steel", "crash_steel_pipe_distant", "crash_with_hiss", "crawl_and_rattle", "debris_hits", "dirt_on_coffin_lid", "door_barn", "drop_object_on_floor", "dumping_bag_of_cans_series", "dumping_cans_in_cart_close", "dumping_cans_in_cart_far", "dumpster", "dumpster_bottle_smash", "dumpster_door", "dumpster_door_hit", "dumpster_door_latch", "dumpster_rattle", "face_hit_series", "forest_wood_snapping", "fridge_door_fall_open", "fridge_falls_leaks", "glass_crunch", "glass_drop_and_roll", "glass_pieces_on_metal", "glass_shards_pouring_onto_metal", "glass_shatters_into_debris", "glass_windows_breaking", "glass_windows_crashing", "hit_with_metal_tray", "hit_with_club", "hits_on_roof_series", "hooking_up_car_to_tow_truck", "ice_crash_crumble", "junk_crash", "junk_rummage", "keying_car", "knife_drop", "log_scrape_on_boulder", "loose_change_on_wood", "marble_drop_and_roll", "metal_banging_against_rocks", "metal_breaking_apart", "metal_crash", "metal_parts_cling", "metal_scrap_kicking", "metal_scrap_rattling", "metal_sheets_sliding", "metal_strike_on_wood", "metal_thud", "metal_trash_can_filled", "object_grating_metal", "object_toss_and_smash", "object_toss_and_smash_glass", "plastic_board_falling_over", "plastic_object_dropping", "pound_on_big_tin_bin", "pounding_on_dinner_table_series", "reverberating_slam", "rock_hits_metal_debris", "rock_scraping_on_boulder", "rocks_on_concrete_series", "rubble_crash", "scraping_car_with_rock_series", "shattered_glass_hitting_metal", "silverware_on_glass_toast", "small_crash_series", "small_crashes", "small_glass_pane_shatter", "smashing_car_sunroof_series", "smashing_car_window", "smashing_car_window_series", "smashing_car_windshield_series", "splitting_fire_wood", "stacking_logs", "stone_drop", "stones_and_water_on_cement", "stress_creak", "sweeping_glass_shards", "taking_down_a_dead_tree", "tearing_crunch", "trash_dropping_in_dumpster", "water_can_fall", "windshield_hit_with_bar", "wine_glass_shatter", "wood_bowling_pin_drop_series", "wood_rolling_short", "wooden_sticks"]
+				},
+				{
+					categoryName: "Office", categoryColor: 'blue', sounds: [
+						"button_push", "click_continuous", "computer_typing_slow", "desk_organization", "keyboard_typing_fast", "keyboard_typing_fast_close", "keyboard_typing_fast_far", "push_computer_keys", "scissor_snips", "slow_typing", "typing_on_keyboard"]
+				},
+				{
+					categoryName: "Science Fiction", categoryColor: 'blue', sounds: [
+						"alien_beam", "alien_breath", "alien_song", "creature_distortion_white_noise", "dream_breath", "electric_ring_long", "forboding_resonance", "high_to_low_sweep", "outer_space", "ringing_ambient_background", "robot_code", "rubble_breaking", "sci_fi_vortex", "suspense_builder", "windchime_drone"]
+				},
+				{
+					categoryName: "Sports", categoryColor: 'blue', sounds: [
+						"baseball_glove_handling", "baseball_glove_tag_out", "baseball_glove_tags", "baseball_into_glove", "basketball_bounce_and_roll", "basketball_pass_and_handle", "basketball_shot_rim_short", "basketball_shot_swish", "bicycle_front_wheel_land", "bicycle_handle_bar_movement", "bicycle_pedaling", "bicycle_pedaling_old_chain", "bicycle_trick_land", "billiard_balls_hit", "bowling", "bowling_alley", "bowling_alley_arcade", "bowling_alley_room_tone", "bowling_ball_return", "bowling_gutter_ball", "bowling_gutter_ball_return", "bowling_pin_machine", "bowling_shot", "bowling_shot_with_ball_return", "bowling_single", "bowling_slow_roll", "bowling_strike", "bowling_miss_pins", "bowling_pin_clear", "bowling_pin_set", "card_dealing", "card_game", "croquet_bag_rummaging", "croquet_ball_hits", "deck_of_cards_on_table", "dodge_ball_bounce", "dragging_on_asphalt", "drawing_cards", "driver_club_hitting_golf_ball", "fist_into_glove", "football_catch_and_tuck", "football_dropkick", "football_kick_in_grass", "football_punts", "frisbee_catch", "frisbee_throw", "girls_soccer_game", "golf_bag_pocket_shuffling", "golf_bag_with_clubs_moving", "golf_ball_on_pavement", "golf_clubselection", "golf_swing_practice", "iron_club_hits_golf_ball", "kids_playing_in_gym", "metal_arrow_handling", "metal_arrows_handling", "metal_baseball_bat_taps", "metal_bat_hits_baseball", "metal_dropped_lingering", "metal_dropped_rolling", "metal_strike", "ping_pong_ball_bounce", "ping_pong_ball_hit", "ping_pong_paddle_toss_on_table", "ping_pong_paddle_on_table", "pool_table_ball_clacks", "pool_table_ball_drops_in_pocket", "pool_table_ball_release", "pool_table_ball_return", "pool_table_balls_rolling", "pool_table_break", "pool_table_shot", "pool_table_shot_and_sink", "practice_shuffling_cards", "running_cleats", "skateboard_kick_push", "skateboard_skid_stop", "skateboard_skid_stop_series", "skateboard_trick_and_crash", "skateboard_trick_and_land", "skateboard_turning_on_pavement", "soccer_ball_bounce_on_pavement", "soccer_ball_bounce_series", "soccer_ball_chests", "soccer_ball_in_net", "soccer_ball_knee_series", "soccer_kicks_series", "tennis_ball_dribble", "trampoline_jumps", "ultimate_frisbee_game", "volleyball_ball_slow_bounce", "volleyball_slap_on_ball", "volleyball_spikes", "walking_cleats", "wood_bat_falling_in_dirt", "wood_bat_falling_in_grass", "wood_golf_club_hit_ball", "wooden_bat_dropped_on_asphalt", "wooden_bat_hits", "wooden_bat_hits_baseball_run"]
+				},
+				{
+					categoryName: "Tools", categoryColor: 'blue', sounds: [
+						"18v_cordless_drill_high_pitch", "18v_cordless_drill_switch", "air_nailer_aluminum", "air_nailer_wood", "baler_startup_and_run", "chopping_log", "cutting_through_foliage", "digging_with_trowel", "drill_gear", "drill_motor_dopper", "drill_motor_series", "drill_press", "drilling_at_construction_site", "ejecting_a_cassette", "electric_mud_mixer", "grass_clippers", "hair_clippers_cutting", "hammer_on_cement", "hammering_into_wood", "handling_a_camera", "hitting_wedge_with_maul", "household_drill", "industrial_sewing_machine", "inserting_a_cassette", "jackhammer_close", "large_drill_press", "lens_adjustment", "machine_rumble", "manual_drill", "manure_spreader", "meat_grinder", "medium_drill_burst", "medium_drill_burst_low", "medium_drill_burst_series", "medium_drill_long_accelerating", "metal_machine_hum", "metal_trash_can_filled", "play_and_stop_on_a_camera", "power_tool_electrical_buzz", "ratchet_wrench_slow", "ratcheting_trailer_wench", "record_alert", "sewing_machine_series", "sewing_machine_squeal", "sewing_machine_treadle", "shovel_digging_dirt", "shovels_digging_in_distance", "skil_saw_motor_run", "sledgehammer_handle_cement", "small_drill", "small_drill_motor_on_metal_plate", "small_drill_on_plate", "small_reciprocating_saw_burst", "small_reciprocating_saw_weak", "splitting_fire_wood", "transporting_a_camera", "wood_chipper", "metal_construction_background"]
+				},
+				{
+					categoryName: "Transportation", categoryColor: 'blue', sounds: [
+						"aggressive_motorcycle", "air_horn_in_close_hall_series", "airplane_in_flight", "airplane_taxi_long", "bicycle_pedal_grind", "bicycle_pedaling", "bicycle_riding_on_gravel", "car_brake_pedal", "car_cruise_hand_out_window", "car_door", "car_door_open_shut", "car_door_closing", "car_door_lock", "car_drive_by", "car_drive_off", "car_engine_idling_accelerating", "car_gear_shift", "car_gear_shifting", "car_gears_changing", "car_horn", "car_horn_distant_with_bird_chirp", "car_pull_in", "car_start_garage_opening", "car_stop_and_go", "car_through_icy_puddle", "car_trunk", "car_vent_slider", "car_on_gravel", "city_traffic", "credit_card_swipe", "dock_movement", "doppler_passing_by_stationary", "drive_in_reverse_beep_alert", "driving_in_car_interior", "driving_on_gravel", "dumpster_door_slam", "engine_and_power_windows", "engine_bus", "engine_rev_continuous", "engine_revving_in_parking_garage", "engine_start_up", "falling_off_bike_on_gravel", "fast_windshield_wipers", "fast_wipers_in_rain", "fuel_rod_handle", "fuel_rod_insert", "gas_pedal", "gas_pump_fill_up", "gear_shift_and_motor_start", "gear_shifter", "getting_into_car_with_radio", "helicopter_background_noise", "helicopter_by", "helicopter_landing", "helicopter_start_and_take_off", "helicopter_take_off", "hit_and_miss_engine", "horse_farm_actions", "horse_team", "horse_and_carriage", "hot_rod_twin_engine", "interior_driving_sounds", "large_truck_driving", "large_truck_driving_with_straps", "large_truck_passing_on_highway", "long_buzz", "low_motorcycle", "low_motorcyle_drive", "machine_sewing", "metal_gear", "metal_gear_shifting", "metal_shuffling", "motor_approaching", "motor_false_start", "motor_running", "motor_running_aircraft", "motor_running_loudly", "motorcycle_drive_by", "motorcycle_engine_start_idle_kill", "motorcycle_horn", "muscle_car_big_room", "muscle_car_distant_rev_short", "muscle_car_driving_skid_out", "muscle_car_highway_skid", "muscle_car_rev", "muscle_car_speeding_highway", "muscle_car_start_idle_and_drive_away", "muscle_car_start_idle_and_stall", "muscle_car_start_rev_and_idle", "muscle_car_start_up_alleyway", "muscle_car_start_and_drive_away", "old_engine_sputter", "open_car_beeps", "opening_closing_car_door", "opening_closing_car_door_far", "panhead_motorcycle", "panhead_motorcycle_drive", "pedal_braking", "plastic_cap", "prop_plane_start", "prop_plane_take_off", "quiet_whirring", "road_rural", "suv_back_out_and_return", "suv_door_open_and_close", "suv_drive_by", "suv_windshield_wiper", "suv_clutch", "sail_flapping_series", "ship_bell", "slow_windshield_wipers", "slow_wipers_in_rain", "space_craft_passing_pulse_stutter", "sports_car_driving", "sports_car_driving_low_rumble", "sports_car_speeding", "sports_car_tunnel_passing", "sportscar_driving_nearby", "start_motor_drive_away", "suburban_streets_summer", "subway_nyc_announcement", "subway_nyc_in_motion", "supercar_engine_revving", "tires_rolling_on_gravel_no_engine", "tires_squeal_continuous", "tow_truck_engine_pulling_car", "tractor_background_noise", "truck_drive", "truck_driving_indoors", "truck_driving_in_parking_structure", "truck_idle_drive_slow_interior", "truck_bumps", "trunk_open", "trunk_window_open_hydraulic_hiss", "twisting_dial_clicks", "two_stroke_revving", "voice_on_radio_accent", "wet_tire_drive_by", "windshield_wipers_no_water", "wood_creak_on_old_ship_series", "off_roading_interior"]
+				},
+				{
+					categoryName: "Water", categoryColor: 'blue', sounds: [
+						"air_woosh_underwater", "cooking_pot_filling_in_sink_slowly", "fountain_water_bubbling", "glass_of_ice_pour_into_sink", "humidifier_bubble", "kitchen_sink_drain_close", "large_bubbles_surfacing", "pour_into_metal_bucket", "rocks_into_water", "sink_drain_far", "sink_leaking", "sink_use_handwash", "small_stream_flowing", "soaking_in_water_series", "spray_dishes", "storm_drain", "washing_hands_in_bathroom", "water_drains_in_pipe", "water_drains_in_pipe_with_pump", "water_filling_glass_from_faucet", "water_hose_on_concrete", "water_into_surgical_tray", "water_lapping_wind", "water_leak", "water_pour_into_half_full_sink", "water_pour_into_surgical_tray", "water_pouring_from_jug", "water_running_by", "water_rushing_stereo_series", "water_splash_on_cement_series", "water_spray_into_bucket", "water_sprayer", "water_on_metal_surface", "waves_crashing_on_rock_beach"]
+				},
+				{
+					categoryName: "Weapons", categoryColor: 'blue', sounds: [
+						"50_cal_shells_drop", "50cal_gun_cock_and_dry_fire", "a10_jet_flyby_fire", "airplane_rocket_fire_close", "auto_bullets_flyby_short", "automatic_gun", "big_explosion_cut_off", "big_explosion_distant", "big_explosion_sweeping_in", "big_gun_shots_close", "bullet_hit_car", "cocking_a_50cal_gun", "explosion_hiss_bop_bang", "gun_drop_on_cement", "gun_drop_on_metal_grate", "gun_loading_foam", "gun_parts_handling", "gun_powder_ignite", "gun_reload", "gun_shells_dropping", "gun_shooting_cocking_air", "gun_shooting_cocking_darts", "gun_shooting_cocking_foam", "gun_shot_dry_fire", "gun_slide_handling_loud", "gun_trigger_release", "gunfire", "gunfire_and_voices", "gunfire_long_distance", "gunshot_and_echo_long", "handgun_hammer_click", "handgun_dry_fire", "handgun_mag_load", "handgun_slide_handling", "handgun_trigger_pulls", "handgun_cocking", "handgun_handling_souds", "handgun_magazine_loading", "handgun_trigger_pull_empty", "handling_bullets", "howitzer_cannon_fire", "lit_fuse", "load_magazine_single_bullets", "long_rifle_shots", "m4_shots", "machine_gun_hit_car", "magazine_handling", "magnum_shots", "medium_casings_on_cement", "medium_casings_on_metal", "metallic_drops_and_echo", "revolver_cylinder_click_series", "revolver_trigger_pull_empty", "rifle_charging_handle", "rifle_charging_handle_dry_fire", "rifle_cycle_far", "rifle_fire_select", "rifle_handling_mechanical_series", "rifle_mag_load", "rifle_magazine_handle", "rifle_musket_fire_random", "rifle_musket_fire_volley", "rifle_shot_echo", "rifle_shot_echo_series", "shell_casings_handgun", "shell_casings_poured_on_cement", "shell_casings_poured_on_metal", "shell_casings_revolver", "shell_casings_rifle", "shot_gun_handling", "smoke_bomb", "spring_steel_rico_hit", "stylized_machine_gun_shots", "unloading_gun_magazine_series", "unloading_gun_magazine_singles", "vulcan_machine_gun_series", "handling_50cal_gun", "metal_drop"]
+				},
+				{
+					categoryName: "Weather", categoryColor: 'blue', sounds: [
+						"afternoon_storm_long", "desert_howling_wind", "distant_thunder", "forest_wind_summer", "hail_or_sleet_falling", "house_windy_day", "ice_or_rain", "leaves_russle_on_tree", "light_breeze", "light_rain", "long_silence_at_top", "low_thunder_rolls", "rain_heavy_loud", "rain_heavy_quiet_interior", "rain_on_roof", "rain_on_rooftop", "rain_water_dripping_fast_hard", "rain_water_dripping_softly", "rain_on_car_heavy", "rolling_thunder", "room_tone_wind_blowing_long", "rumbling_wind", "strong_wind", "summer_thunder_and_rain", "thunder_crack", "thunderstorm", "thunderstorm_long", "wind", "wind_in_leaves_on_porch", "wind_quiet_creaks", "wind_on_video_camera_mic", "wind_through_window", "windy_forrest", "windy_weather_driving"]
+				},
+				{
+					categoryName: "Emergency", categoryColor: 'blue', sounds: [
+						"ambulance_drive_siren", "ambulance_siren", "ambulance_siren_distant", "beeper_emergency_call", "emergency_911_dispatch_call", "emergency_flare_burns", "emergency_flare_movement", "emergency_radio_alert", "emergency_siren_approaching", "emergency_siren_close_long", "emergency_siren_distant", "emergency_siren_short_burst", "fire_department_dispatch_pager", "fuse_ignite_and_burn"]
+				},
+				{
+					categoryName: "Alarms", categoryColor: 'blue', sounds: [
+						"alarm_clock", "assorted_computer_sounds", "beep_short", "bugle_tune", "digital_watch_alarm_long", "dinner_bell_triangle", "dosimeter_alarm", "mechanical_clock_ring", "medium_bell_ringing_near", "phone_alerts_and_rings", "radiation_meter", "setting_alarm_clock", "spaceship_alarm", "winding_alarm_clock"]
+				},
+				{
+					categoryName: "Ambiences", categoryColor: 'blue', sounds: [
+						"ambient_hum_air_conditioner", "arcade_room", "barnyard_with_animals", "carnival_atmosphere", "children_group_ambience", "coffee_shop", "convention_hall_ambience_noise", "crickets_with_distant_traffic", "dmv_background_noise", "daytime_forrest_bonfire", "distant_highway", "factory_background", "factory_manufacture_background", "factory_morning_start_up", "factory_sounds", "farm_morning_with_sheep", "fire", "highway_near_waterfront", "highway_near_waterfront_distant", "inside_barn_with_chickens", "july_night", "jungle_atmosphere_afternoon", "jungle_atmosphere_late_night", "jungle_atmosphere_morning", "jungle_atmosphere_night", "kids_playing", "kids_playing_at_night", "laundromat_sounds", "morning_farm", "morning_highway_in_distance", "outdoor_ambience_dog_barking", "outdoor_farm_sounds", "outdoor_sounds_farm_traffic", "outdoor_sounds_with_dog", "outdoor_sounds_with_whirr", "outdoor_suburb_ambience", "outdoor_summer_ambience", "outside_night", "retail_background_noises", "small_outdoor_marketplace", "spring_day_forest", "subway_station_nyc", "summer_beach_parking_lot", "summer_forest", "swoosh", "truck_beeping", "warm_afternoon_outdoors", "warm_evening_outdoors", "outdoor_event_background_noise"]
+				},
+				{
+					categoryName: "Animals", categoryColor: 'blue', sounds: [
+						"afternoon_crickets_long", "animal_bark_and_growl", "animal_hiss_and_rattle", "animal_squealing", "bee_buzz", "buzzing_fly", "cat_purr", "cat_purr_close", "cicada_chirp", "crow_call", "crows_caw_in_field", "crows_picking_and_eating", "distant_dog_barking", "dog_barking", "dog_drinking_close_up", "dog_growling", "dog_snarling", "dog_whining", "flies_buzzing_and_circling", "geese_outside", "horse_eating_grass", "june_songbirds", "june_songbirds_with_crows", "mouse_squeaking", "owl_hooting", "small_dog_wimper_series", "swarming_bees", "tentacle_flop_down", "trapped_dragon_fly", "wasp_on_window", "woodpecker_eating_distant", "woodpecker_pecking_fast"]
+				},
+				{
+					categoryName: "Cartoon", categoryColor: 'blue', sounds: [
+						"cartoon_boing", "cartoon_cowbell", "cartoon_metal_thunk", "cartoon_ringing_hit", "clang_and_wobble", "clown_horn", "clown_slide_sound_effects", "concussive_guitar_hit", "concussive_hit_guitar_boing", "continuous_slide_whistle", "cowbell_ringing", "crash_layer_cymbals", "crash_layer_drumset", "crash_layer_kick_drum", "crash_layer_kick_pedal", "crazy_dinner_bell", "cymbal_kick", "deflate", "drum_roll", "drumset_falling_down_stairs", "face_stretch", "falling_whistle", "fart_long_through_door", "fart_toot", "finger_flick_series", "getting_stuck", "goofy_spring_bounces", "hair_ripping", "hitting_a_woodblock", "inflating_big_balloon", "instrument_strum", "jingle_bells", "long_fart", "mechanical_clock_ring", "metal_strike", "metal_twang", "metallic_twang_high", "motor_running_muffled", "pop", "punchline_drum", "rainstick_slow", "rubber_duck_squeak_series", "rubber_glove_pulling_on_series", "rubber_glove_snapping_series", "rubber_squeaking", "siren_whistle", "slap_with_glove", "slapping_bare_skin", "slapping_three_faces", "slide_whistle", "slide_whistle_crazy_series", "slide_whistle_rise_and_fall", "slide_whistle_up", "slide_whistle_to_drum", "snare_roll_tumbling", "strike_hollow_wood", "suction_cup_pull", "tympani_bing", "ufo_zip_whistle", "vomit_in_bathroom", "vomiting_close", "wet_fart", "whistle_toy", "wind_chimes", "wind_up_toy", "wood_plank_flicks", "woodblock_hit", "wooden_train_whistle", "woodpecker", "xylophone_tip_toe_scale_up"]
+				},
+				{
+					categoryName: "Crowds", categoryColor: 'blue', sounds: [
+						"battle_agony_moans", "battle_crowd_celebrate_stutter", "battle_crowd_celebration", "battle_cry_high_pitch", "battle_intimidation_forest", "crowd_talking", "female_crowd_celebration", "human_group_cry_out", "murmuring_and_talking_men", "quiet_breathing", "team_cheer", "voices_angry", "voices_moaning", "voices_murmur", "voices_on_street_accent", "wild_battle_crowd_approach"]
+				},
+				{
+					categoryName: "Doors", categoryColor: 'blue', sounds: [
+						"creaking_wooden_door", "cupboard_door", "deadbolt_lock", "door_close", "door_close_air_suck", "door_close_far", "door_close_and_lock", "door_hitting_backstop_close", "door_hitting_backstop_far", "door_knob", "door_locking_shut", "door_open_close", "door_opening_closing", "door_slams_fast_four_times", "door_swinging_salloon", "doorknob_opening", "dragging_over_wood_floor_series", "farm_door_creaks_latch_shuts", "farm_door_latch", "front_door_close", "glass_shower_door", "glass_shower_door_shake", "heavy_door_close", "hollow_wood_door", "key_in_lock", "knock_on_door", "knock_on_wooden_door", "latch_opening_closing", "lid_close_wood", "locked_doorknob_jiggle", "medicine_cabinet_latch", "metal_scrap_rattling", "opening_bathroom_door", "opening_closing_bathroom_door", "opening_closing_heavy_door", "opening_door_with_key", "push_bar_door_series", "screen_door_close", "shutting_refrigerator_door", "sliding_closet_door_series", "sliding_glass_door", "sliding_glass_door_aggressive", "sliding_glass_door_closing", "sliding_glass_door_latching", "sliding_glass_door_opening", "sliding_glass_door_series", "spring_attic_door", "turning_door_knob", "wood_door_open_close", "wood_door_open_close_soft", "wood_door_close_hard", "wood_door_close_medium", "wood_door_close_soft", "wood_door_close_and_rattle", "wood_door_open", "wood_door_open_and_close_series", "wood_rattle"]
+				},
+			];
+
+			const list = document.getElementById('library-list');
+			list.innerHTML = '';
+
+			// Iterar por cada categoría de sonidos y crear un botón por categoría
+			cloudLibrary.forEach(category => {
+				// Un botón por categoría
+				const btn = document.createElement('button');
+				btn.className = `btn ${category.categoryColor}`;
+				btn.innerText = category.categoryName;
+
+				btn.addEventListener('click', () => {
+					list.innerHTML = '';
+
+					// Crear un botón por cada sonido en esa categoría
+					category.sounds.forEach(snd => {
+						const soundName = String((typeof snd === 'string') ? capitalizeOnlyFirstLetter(snd.replace(/[_]/g, ' ')) : snd.name);
+						const btn = document.createElement('button');
+						btn.className = 'btn blue';
+						btn.innerText = soundName;
+
+						btn.addEventListener('click', async () => {
+							btn.innerText = "Downloading...";
+							let response;
+							let url = "";
+
+							try {
+								// Si es un sonido de la API de sonidos de google de hace AÑOS (que sigue en pie :D )
+								if (typeof snd === 'string') {
+									url = `https://actions.google.com/sounds/v1/${category.categoryName.toLowerCase().replace(/[ ]/g, '_')}/${snd}.ogg`;
+								}
+								// Si es un sonido de una url específica:
+								else {
+									url = snd.url;
+								}
+								response = await fetch(url);
+							} catch (err) {
+								alert(`Error downloading: ${err}`);
+								return;
+							}
+							if (response && response.ok) {
+								try {
+									const blob = await response.blob();
+									const fileName = typeof snd === 'string' ? snd + '.ogg' : snd.url.split('/').pop() || 'sound.ogg';
+									const file = new File([blob], fileName, {
+										type: blob.type,
+										lastModified: Date.now()
+									});
+
+									await loadSample(file, 'cloud_' + soundName);
+
+									alert(`Sample "${soundName}" downloaded correctly.`);
+									document.getElementById('library-modal').style.display = 'none';
+								} catch (err) {
+									alert(`Error decoding: ${err}`);
+								}
+							} else if (response) {
+								alert(`Error downloading: ${response.statusText}`);
+							}
+						});
+						list.appendChild(btn);
+					});
+				});
+				list.appendChild(btn);
+			});
+			document.getElementById('library-modal').style.display = 'block';
+		}
+
+
+		function undo() {
+			if (undoStack.length === 0) return;
+			redoStack.push(JSON.stringify(s));
+			const prevState = undoStack.pop();
+			s = JSON.parse(prevState);
+			selection = [];
+			buildUI();
+			draw();
+		}
+
+		function redo() {
+			if (redoStack.length === 0) return;
+			undoStack.push(JSON.stringify(s));
+			const nextState = redoStack.pop();
+			s = JSON.parse(nextState);
+			selection = [];
+			buildUI();
+			draw();
+		}
+
+		// INICIALIZACIÓN SEGURA PARA GOOGLE APPS SCRIPT
+		if (document.readyState === 'loading') {
+			document.addEventListener('DOMContentLoaded', () => {
+				setTimeout(() => {
+					try {
+						buildUI();
+					} catch (e) {
+						console.error('Init error:', e);
+					}
+				}, 100);
+			});
+		} else {
+			setTimeout(() => {
+				try {
+					buildUI();
+				} catch (e) {
+					console.error('Init error:', e);
+				}
+			}, 100);
+		}
+	</script>
+</body>
+
+</html>

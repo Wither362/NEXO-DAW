@@ -2133,7 +2133,7 @@
 
 			document.getElementById('save-and-compile').addEventListener('click', saveCode);
 
-			document.getElementById('open-library').addEventListener('click', openLibrary);
+			document.getElementById('open-library').addEventListener('click', () => {openLibrary();});
 			document.getElementById('close-library').addEventListener('click', () => { document.getElementById('library-modal').style.display = 'none'; });
 
 			document.getElementById('tracks-container').addEventListener('change', (e) => {
@@ -2484,6 +2484,7 @@
 			document.addEventListener('DOMContentLoaded', () => {
 				setTimeout(() => {
 					try {
+						init();
 						buildUI();
 					} catch (e) {
 						console.error('Init error:', e);
@@ -2493,6 +2494,7 @@
 		} else {
 			setTimeout(() => {
 				try {
+					init();
 					buildUI();
 				} catch (e) {
 					console.error('Init error:', e);

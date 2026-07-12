@@ -1,2 +1,0 @@
-cd GeometryDashCode
-clasp push

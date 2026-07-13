@@ -466,7 +466,16 @@
 		<h3>Sample library (from the cloud)</h3>
 		<p style="font-size:11px; color:#aaa;">This files will only be downloaded on click.</p>
 		<div id="library-list" style="display:flex; flex-direction:column; gap:5px;"></div>
-		<button class="btn stop" id="close-library" style="margin-top:15px; width:100%;">Cerrar</button>
+		<button class="btn stop" id="close-library" style="margin-top:15px; width:100%;">Close</button>
+	</div>
+
+	<div id="error-modal"
+		style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%); background:var(--panel); border:2px solid var(--accent); padding:20px; z-index:2000; color:white; width: 300px; max-height: 70vh; overflow-y: auto;">
+		<h3>Error:</h3>
+		<div id="error-description" style="background:#222; padding:10px; font-size:11px; border-radius:4px; max-height:100px; overflow-y:auto;">
+			Error text
+		</div>
+		<button class="btn stop" id="close-error-window" style="margin-top:15px; width:100%;">Close error window</button>
 	</div>
 
 	<div id="ctx-menu" style="display:none; position:fixed; background:var(--panel); border:1px solid var(--accent); border-radius:4px; z-index:1000; flex-direction:column; padding:5px; box-shadow: 0 4px 6px rgba(0,0,0,0.5);">
@@ -806,6 +815,7 @@
 
 		function setElementText(id, text) { const element = document.getElementById(id); if (element) element.innerText = text; }
 		function setElementValue(id, value) { const element = document.getElementById(id); if (element) element.value = value; }
+		function setElementDisplay(id, display) { const element = document.getElementById(id); if (element) element.style.display = display; }
 
 		function buildUI() {
 			setElementValue('song_name', s.name);
@@ -1123,7 +1133,7 @@
 			ctxMenu.style.top = e.clientY + 'px';
 		}
 
-		function hideContextMenu() { document.getElementById('ctx-menu').style.display = 'none'; }
+		function hideContextMenu() { setElementDisplay('ctx-menu', 'none'); }
 		function clearSelection() { selection = []; isSelecting = false; }
 
 		function buildTimeline() {
@@ -1679,8 +1689,8 @@
 
 			const t = s.tracks[idx];
 			setElementText('modal-title', `Editing: ${t.name}`);
-			document.getElementById('sampler-ui').style.display = t.type === 'sampler' ? 'flex' : 'none';
-			document.getElementById('code-ui').style.display = t.type === 'custom' ? 'flex' : 'none';
+			setElementDisplay('sampler-ui', t.type === 'sampler' ? 'flex' : 'none');
+			setElementDisplay('code-ui', t.type === 'custom' ? 'flex' : 'none');
 
 			if (t.type === 'custom')
 				setElementValue('custom-code', t.customJS || "");
@@ -1692,7 +1702,7 @@
 					drawWaveform(t.sampleId);
 				}
 			}
-			document.getElementById('tool-modal').style.display = 'flex';
+			setElementDisplay('tool-modal', 'flex');
 		}
 
 		/**
@@ -1763,7 +1773,7 @@
 
 		function saveCode() {
 			s.tracks[actTrk].customJS = document.getElementById('custom-code').value;
-			document.getElementById('tool-modal').style.display = 'none';
+			setElementDisplay('tool-modal', 'none');
 		}
 
 		// Guardar Trim de Sampler al cambiar inputs
@@ -2002,6 +2012,18 @@
 			buildUI();
 		}, 500);
 
+		/**
+		 * @param {string} errorDescription
+		*/
+		function openErrorWindow(errorDescription, errorFile, errorLine, errorColumn) {
+			setElementText("error-description", `File ${errorFile} at line ${errorLine}, at column ${errorColumn}: ${errorDescription}`);
+			setElementDisplay('error-modal', 'block');
+		}
+
+		window.addEventListener("error", (errorEvent) => {
+			openErrorWindow(errorEvent.message, errorEvent.filename, errorEvent.lineno, errorEvent.colno);
+		});
+
 		function initEventListeners() {
 			console.log("Adding the layout listeners...");
 
@@ -2126,15 +2148,15 @@
 
 			document.getElementById('delete-track').addEventListener('click', () => {
 				saveState();
-				document.getElementById('tool-modal').style.display = 'none';
+				setElementDisplay('tool-modal', 'none');
 			});
 
 			document.getElementById('load-audio').addEventListener('change', (e) => { loadSample(e.target.files[0]); });
 
 			document.getElementById('save-and-compile').addEventListener('click', saveCode);
 
-			document.getElementById('open-library').addEventListener('click', () => {openLibrary();});
-			document.getElementById('close-library').addEventListener('click', () => { document.getElementById('library-modal').style.display = 'none'; });
+			document.getElementById('open-library').addEventListener('click', () => { openLibrary(); });
+			document.getElementById('close-library').addEventListener('click', () => { setElementDisplay('library-modal', 'none'); });
 
 			document.getElementById('tracks-container').addEventListener('change', (e) => {
 				saveState();
@@ -2274,7 +2296,7 @@
 					t.triggers.push({ c: selection[0].c, param: param, val: val });
 					alert(`Added new Trigger in Beat ${(selection[0].c / 16) + 1} with parameter ${param} with value ${val}.`);
 				}
-				document.getElementById('ctx-menu').style.display = 'none';
+				setElementDisplay('ctx-menu', 'none');
 			});
 
 			// Eliminar
@@ -2299,6 +2321,8 @@
 				});
 				hideContextMenu();
 			});
+
+			document.getElementById("close-error-window").addEventListener("click", () => { setElementDisplay('error-modal', 'none'); });
 		}
 
 		function init() {
@@ -2442,7 +2466,7 @@
 									await loadSample(file, 'cloud_' + soundName);
 
 									alert(`Sample "${soundName}" downloaded correctly.`);
-									document.getElementById('library-modal').style.display = 'none';
+									setElementDisplay('library-modal', 'none');
 								} catch (err) {
 									alert(`Error decoding: ${err}`);
 								}
@@ -2455,7 +2479,7 @@
 				});
 				list.appendChild(btn);
 			});
-			document.getElementById('library-modal').style.display = 'block';
+			setElementDisplay('library-modal', 'block');
 		}
 
 
@@ -2479,6 +2503,9 @@
 			draw();
 		}
 
+		init();
+		buildUI();
+		/*
 		// INICIALIZACIÓN SEGURA PARA GOOGLE APPS SCRIPT
 		if (document.readyState === 'loading') {
 			document.addEventListener('DOMContentLoaded', () => {
@@ -2500,7 +2527,7 @@
 					console.error('Init error:', e);
 				}
 			}, 100);
-		}
+		}*/
 	</script>
 </body>
 

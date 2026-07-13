@@ -2012,6 +2012,8 @@
 			buildUI();
 		}, 500);
 
+		//#region -----WINDOW.ADDEVENTS---------------
+
 		/**
 		 * @param {string} errorDescription
 		*/
@@ -2023,6 +2025,15 @@
 		window.addEventListener("error", (errorEvent) => {
 			openErrorWindow(errorEvent.message, errorEvent.filename, errorEvent.lineno, errorEvent.colno);
 		});
+
+		// Si hay un dispositivo de media conectado nuevo, parar el proyecto
+		navigator.mediaDevices.addEventListener("devicechange", (device) => {
+			if (isPlay) {
+				togglePlay();
+			}
+		});
+
+		//#endregion
 
 		function initEventListeners() {
 			console.log("Adding the layout listeners...");

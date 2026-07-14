@@ -2,6 +2,7 @@
 <html lang="es">
 
 <head>
+	<title>NEXO D.A.W.</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
 	<style>
 		:root {
@@ -362,7 +363,7 @@
 		<div class="control-group" title="Action to execute when touching/clicking the piano roll">
 			<select id="mobile-tool-select">
 				<option value="draw" title="Add new notes or edit the duration of existing ones">Draw</option>
-				<option value="select" title="Allows for selection drag">Edit</option>
+				<option value="edit" title="Allows for selection drag">Edit</option>
 				<option value="pan" title="Adjust existing notes's pan">Adjust Pan</option>
 				<option value="delete" title="Delete notes">Delete</option>
 			</select>
@@ -556,8 +557,14 @@
 		}
 
 		// --- INTERFAZ GRAFICA (GUI) ---
-		const cvs = document.getElementById('canvas'), cCtx = cvs.getContext('2d');
+		/** @type {HTMLCanvasElement} */
+		const cvs = document.getElementById('canvas');
+		/** @type {CanvasRenderingContext2D} */
+		const cCtx = cvs.getContext('2d');
+		/** @type {AudioContext} */
 		const A_CTX = new (window.AudioContext || window.webkitAudioContext)();
+		/** @type { AudioScheduledSourceNode[] } */
+		let audioSourcesPlaying = new Array();
 
 		let cvs_ready = false;
 		const checkCvsReady = setInterval(() => {
@@ -588,6 +595,7 @@
 		}
 
 		// Diccionario para almacenar buffers de audio crudos en memoria (no se exportan a JSON puro fácilmente sin Base64, se requiere re-carga)
+		/** @type { Record<string, AudioBuffer> } */
 		const sampleBuffers = {};
 
 		const NOTES = ['B', 'A#', 'A', 'G#', 'G', 'F#', 'F', 'E', 'D#', 'D', 'C#', 'C'];
@@ -724,6 +732,7 @@
 		// NÚCLEO DE GENERACIÓN DE SONIDO (Soporta Síntesis, Samplers y Código)
 		// NUEVO: playNode adaptado para soportar EQ Completo y EQ de Nota Individual
 		/**
+		 * @param {AudioContext} ctx
 		 * @param {Note} noteConfig
 		*/
 		function playNode(trk, r, t, dur, ctx, dest, noteConfig = {}) {
@@ -759,6 +768,7 @@
 				const trimStart = isFinite(parseFloat(trk.trim[0])) ? parseFloat(trk.trim[0]) : 0;
 				source.start(t, trimStart);
 				source.stop(t + safeDur + safeRel);
+				audioSourcesPlaying.push(source);
 			}
 			else if (trk.type === 'custom' && trk.customJS) {
 				try {
@@ -775,9 +785,13 @@
 				osc.connect(eqChain.in);
 				osc.start(t);
 				osc.stop(t + safeDur + safeRel + 0.5);
+				audioSourcesPlaying.push(osc);
 			}
 		}
 
+		/**
+		 * @param {AudioContext} ctx
+		*/
 		function createMasterBus(ctx, dest) {
 			const comp = ctx.createDynamicsCompressor();
 			comp.threshold.value = parseFloat(document.getElementById('m-comp').value);
@@ -1115,7 +1129,7 @@
 					selection.push(newNote); // Seleccionamos las notas recién creadas
 				});
 
-				mobileTool = 'select';
+				mobileTool = 'edit';
 				setElementValue('mobile-tool-select', mobileTool);
 
 				draw();
@@ -1312,7 +1326,7 @@
 			// --- LÓGICA DE HERRAMIENTAS MÓVILES ---
 
 			// 1. MODO SELECCIÓN (Sustituye al Clic Derecho)
-			if (mobileTool === 'select' || e.button === 2) {
+			if (mobileTool === 'edit' || e.button === 2) {
 				isSelecting = true;
 				selection = [];
 				startMouse = { x: ex, y: ey };
@@ -1361,6 +1375,9 @@
 
 		const prScroll = document.getElementById('piano-roll');
 
+		/**
+		 * @param {MouseEvent | TouchEvent} e
+		*/
 		function onMouseDown(e) {
 			const rect = cvs.getBoundingClientRect();
 			const ex = e.clientX - rect.left;
@@ -1370,20 +1387,30 @@
 			const r = s.tracks[actTrk].displayMode === 'drum' ? 36 : Math.floor(ey / zoomY);
 			const t = s.tracks[actTrk];
 
+			// Botón que ha presionado el usuario, compatible entre dispositivos
+			const button = e.touches ? -1 : e.button;
+			console.log(button);
+
 			// Detectar si el usuario ha hecho click dentro de una selección existente (Para arrastrarla)
 			const clickedInSel = selection.find(n => (t.displayMode === 'drum' ? true : r === n.r) && c >= n.c && c < n.c + n.d);
 
 			function startSelection() {
+				// Añadir más notas a la selección si está pulsado el shift
 				if (!heldKeys.has('Shift')) {
 					clearSelection();
 				}
+				// Añadir primero a la selección la nota donde está el ratón
+				aNote = t.notes.find(n => (t.displayMode === 'drum' ? true : r === n.r) && c >= n.c && c < n.c + n.d);
+				if (aNote && !selection.includes(aNote))
+					selection.push(aNote);
+
 				isSelecting = true;
 				startMouse = { x: ex, y: ey };
 				selBox = { x: startMouse.x, y: startMouse.y, w: 0, h: 0 };
 			}
 
 			// 1. ARRASTRAR
-			if (e.button === 0 && clickedInSel && mobileTool === 'select') {
+			if (mobileTool === 'edit' && clickedInSel && (button === 0 || e.touches)) {
 				isDraggingSelection = true;
 				dragStartC = c;
 				dragStartR = r;
@@ -1392,12 +1419,13 @@
 				return;
 			}
 
-			// 2. Selección de caja o menú contextual (NADA DE BOTÓN CENTRAL)
-			if (e.button === 2 || mobileTool === 'select') {
+			// 2. Selección de caja o menú contextual, que se usa cuando está en modo EDIT o si se usa el click derecho
+			if (mobileTool === 'edit' || button === 2) {
 				// Si hace clic derecho en una nota ya seleccionada, abrir el menú contextual
-				if (clickedInSel) {
+				if (clickedInSel && !heldKeys.has('Shift')) {
 					showContextMenu(e);
 				} else {
+					hideContextMenu();
 					startSelection();
 				}
 				draw();
@@ -1406,7 +1434,7 @@
 
 			/*
 			// 3. MODO DIBUJAR
-			if (mobileTool === 'draw' && e.button === 0) {
+			if (mobileTool === 'draw' && button === 0) {
 				saveState(); // Guardar para Undo
 				selection = [];
 				aNote = { r, c, d: 1, p: 0, vol: 1.0 };
@@ -1420,7 +1448,7 @@
 			*/
 
 			// 3. MODO AJUSTAR PANEO (Sustituye al Clic Central)
-			if (mobileTool === 'pan' || e.button === 1) {
+			if (mobileTool === 'pan' || button === 1) {
 				aNote = [];
 				let p = null;
 
@@ -1455,7 +1483,7 @@
 				return;
 			}
 
-			if (e.button === 0) {
+			if (button === 0 || e.touches) {
 				// MODO BORRAR
 				if (mobileTool === 'delete') {
 					saveState();
@@ -1517,6 +1545,7 @@
 		}
 
 		cvs.addEventListener('mousedown', e => { onMouseDown(e); });
+		cvs.addEventListener('touchstart', e => { onMouseDown(e); });
 
 		/**
 		 * @param {MouseEvent | TouchEvent} e
@@ -1780,9 +1809,10 @@
 		document.getElementById('samp-start').addEventListener('change', (e) => s.tracks[actTrk].trim[0] = parseFloat(e.target.value));
 		document.getElementById('samp-end').addEventListener('change', (e) => s.tracks[actTrk].trim[1] = parseFloat(e.target.value));
 
-		// --- SECUENCIADOR Y RENDERIZADO ---
+		//#region --- SECUENCIADOR Y RENDERIZADO ---
 		let isPlay = false, cur = 0, nxtTime = 0, tid;
 
+		// Secuenciador
 		function sched() {
 			while (nxtTime < A_CTX.currentTime + 0.1) {
 				requestAnimationFrame(() => { draw(cur); });
@@ -1836,11 +1866,22 @@
 			isPlay = false;
 			clearTimeout(tid);
 			cur = 0;
+
+			// Parar POR COMPLETO los audios.
+			audioSourcesPlaying.forEach(source => {
+				// try { ... }
+				source.stop();
+				source.disconnect();
+			});
+			audioSourcesPlaying = [];
+
 			setElementText('play-btn', "▶ PLAY");
 			draw(-1);
 		}
 
-		// --- SISTEMA DE GUARDADO/CARGA LOCAL (WIP) ---
+		//#endregion
+
+		//#region --- SISTEMA DE GUARDADO/CARGA LOCAL ---
 		function saveWIP() {
 			// Nota: Los buffers de audio crudos no se guardan en localStorage por tamaño. En una app real irían a IndexedDB.
 			const exportObj = JSON.parse(JSON.stringify(s));
@@ -2011,6 +2052,8 @@
 			}
 			buildUI();
 		}, 500);
+
+		//#endregion
 
 		//#region -----WINDOW.ADDEVENTS---------------
 

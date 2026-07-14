@@ -3,6 +3,8 @@
 
 <head>
 	<title>NEXO D.A.W.</title>
+	<script src="https://unpkg.com/@tonejs/midi"></script>
+
 	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
 	<style>
 		:root {
@@ -699,7 +701,8 @@
 
 		function getFreq(r) {
 			const o = Math.floor(r / 12), n = { 'C': -9, 'C#': -8, 'D': -7, 'D#': -6, 'E': -5, 'F': -4, 'F#': -3, 'G': -2, 'G#': -1, 'A': 0, 'A#': 1, 'B': 2 }[NOTES[r % 12]];
-			return 440 * Math.pow(2, (n + (OCTAVES[o] - 4) * 12) / 12);
+			const val = 440 * Math.pow(2, (n + (OCTAVES[o] - 4) * 12) / 12);
+			return isFinite(val) ? val : -1;
 		}
 
 		// NUEVO: Generador de EQ Multibanda en cascada
@@ -770,22 +773,29 @@
 				source.stop(t + safeDur + safeRel);
 				audioSourcesPlaying.push(source);
 			}
-			else if (trk.type === 'custom' && trk.customJS) {
-				try {
-					const fn = new Function('ctx', 'freq', 't', 'dur', 'gainNode', trk.customJS);
-					fn(ctx, getFreq(r), t, safeDur, eqChain.in); // Conectar instrumento custom al EQ
-				} catch (e) {
-					console.error("Error DSP Custom", e);
-				}
-			}
 			else {
-				const osc = ctx.createOscillator();
-				osc.type = trk.type === 'sampler' || trk.type === 'custom' ? 'sine' : trk.type;
-				osc.frequency.value = getFreq(r);
-				osc.connect(eqChain.in);
-				osc.start(t);
-				osc.stop(t + safeDur + safeRel + 0.5);
-				audioSourcesPlaying.push(osc);
+				const freq = getFreq(r);
+				// TODO: POPUP QUE INDIQUE QUE NO SE HA PODIDO REPRODUCIR EL SONIDO
+				if (!isFinite(freq))
+					return;
+
+				if (trk.type === 'custom' && trk.customJS) {
+					try {
+						const fn = new Function('ctx', 'freq', 't', 'dur', 'gainNode', trk.customJS);
+						fn(ctx, freq, t, safeDur, eqChain.in); // Conectar instrumento custom al EQ
+					} catch (e) {
+						console.error("Error DSP Custom", e);
+					}
+				}
+				else {
+					const osc = ctx.createOscillator();
+					osc.type = trk.type === 'sampler' || trk.type === 'custom' ? 'sine' : trk.type;
+					osc.frequency.value = freq;
+					osc.connect(eqChain.in);
+					osc.start(t);
+					osc.stop(t + safeDur + safeRel + 0.5);
+					audioSourcesPlaying.push(osc);
+				}
 			}
 		}
 
@@ -2157,7 +2167,8 @@
 							s.tracks.push(newTrk);
 						}
 					});
-					buildTracks(); draw();
+					buildTracks();
+					draw();
 					alert("¡MIDI Importado con éxito!");
 				});
 				reader.readAsArrayBuffer(file);

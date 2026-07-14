@@ -1389,7 +1389,6 @@
 
 			// Botón que ha presionado el usuario, compatible entre dispositivos
 			const button = e.touches ? -1 : e.button;
-			console.log(button);
 
 			// Detectar si el usuario ha hecho click dentro de una selección existente (Para arrastrarla)
 			const clickedInSel = selection.find(n => (t.displayMode === 'drum' ? true : r === n.r) && c >= n.c && c < n.c + n.d);

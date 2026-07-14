@@ -1041,10 +1041,12 @@
 
 					d.querySelector('.t-mute').addEventListener('click', () => {
 						s.tracks[i].mute = !s.tracks[i].mute;
+						if (s.tracks[i].solo) s.tracks[i].solo = false;
 						buildTracks();
 					});
 					d.querySelector('.t-solo').addEventListener('click', () => {
 						s.tracks[i].solo = !s.tracks[i].solo;
+						if (s.tracks[i].mute) s.tracks[i].mute = false;
 						buildTracks();
 					});
 

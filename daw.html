@@ -544,7 +544,7 @@
 		 * @property {null} sampleBase64 Datos de la muestra en base64 (null si es sintético).
 		 * @property {string} customJS Código JavaScript personalizado para lógica de audio.
 		 * @property {number[]} trim Array de valores para recorte o ajuste de ganancia.
-		 */
+		*/
 
 		/**
 		 * @typedef {Object} ProjectData
@@ -552,7 +552,7 @@
 		 * @property {number} bpm Tempo del proyecto en beats por minuto.
 		 * @property {number} steps Número total de pasos en el secuenciador.
 		 * @property {TrackConfig[]} tracks Lista de configuraciones de las pistas.
-		 */
+		*/
 
 		function capitalizeOnlyFirstLetter(str) {
 			return str.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
@@ -874,13 +874,17 @@
 		}
 
 		function buildTracks() {
+			/** @type { HTMLElement }*/
 			const tc = document.getElementById('tracks-container');
 			tc.innerHTML = '';
 
+			/** @type { Record<string, { t: TrackConfig, i: number }[] } */
 			const groups = {};
+
 			s.tracks.forEach((t, i) => {
 				if (!groups[t.group])
 					groups[t.group] = [];
+
 				groups[t.group].push({ t, i });
 			});
 
@@ -919,14 +923,20 @@
 				// Mute de Grupo
 				grpDiv.querySelector('.grp-mute').addEventListener('click', () => {
 					const newState = !allMuted;
-					groups[gName].forEach(item => item.t.mute = newState);
+					groups[gName].forEach(item => {
+						item.t.mute = newState;
+						item.t.solo = false;
+					});
 					buildTracks();
 				});
 
 				// Solo de Grupo
 				grpDiv.querySelector('.grp-solo').addEventListener('click', () => {
 					const newState = !anySolo;
-					groups[gName].forEach(item => item.t.solo = newState);
+					groups[gName].forEach(item => {
+						item.t.solo = newState;
+						item.t.mute = false;
+					});
 					buildTracks();
 				});
 
@@ -978,6 +988,7 @@
 							<div class="track-controls">
 								<button class="btn t-mute" title="Mute/Unmute this track" style="padding:4px 6px; background:${t.mute ? '#e74c3c' : '#7f8c8d'};">M</button>
 								<button class="btn t-solo" title="Solo/Unsolo this track" style="padding:4px 6px; background:${t.solo ? '#f1c40f' : '#7f8c8d'}; color:#000;">S</button>
+								<button class="btn t-eq" title="Open equalization menu" style="padding:4px 6px; background:${t.solo ? '#27ae60' : '#7f8c8d'}; color:#000;">EQ</button>
 								
 								<select class="track-mode" style="width:70px;" title="The type of piano roll this track has">
 									<option value="melodic" title="The piano roll has more than 1 tone" ${t.displayMode === 'melodic' ? 'selected' : ''}>Multi-tone</option>
@@ -1041,12 +1052,12 @@
 
 					d.querySelector('.t-mute').addEventListener('click', () => {
 						s.tracks[i].mute = !s.tracks[i].mute;
-						if (s.tracks[i].solo) s.tracks[i].solo = false;
+						s.tracks[i].solo = false;
 						buildTracks();
 					});
 					d.querySelector('.t-solo').addEventListener('click', () => {
 						s.tracks[i].solo = !s.tracks[i].solo;
-						if (s.tracks[i].mute) s.tracks[i].mute = false;
+						s.tracks[i].mute = false;
 						buildTracks();
 					});
 

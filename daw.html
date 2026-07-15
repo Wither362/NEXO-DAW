@@ -398,6 +398,7 @@
 			Save WAV</button>
 	</div>
 
+	<!-- Ajustes de abajo a la izquierda y canvas -->
 	<div id="workspace">
 		<div id="left-panel">
 			<div id="tracks-container"></div>
@@ -429,6 +430,7 @@
 		</div>
 	</div>
 
+	<!-- Ventana de ajustes avanzados de las pistas -->
 	<div id="tool-modal" class="modal">
 		<div class="modal-content">
 			<div style="display:flex; justify-content:space-between;">
@@ -464,6 +466,7 @@
 		</div>
 	</div>
 
+	<!-- Ventana de la librería de audios -->
 	<div id="library-modal"
 		style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%); background:var(--panel); border:2px solid var(--accent); padding:20px; z-index:2000; color:white; width: 300px; max-height: 70vh; overflow-y: auto;">
 		<h3>Sample library (from the cloud)</h3>
@@ -472,6 +475,7 @@
 		<button class="btn stop" id="close-library" style="margin-top:15px; width:100%;">Close</button>
 	</div>
 
+	<!-- Ventana de errores -->
 	<div id="error-modal"
 		style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%); background:var(--panel); border:2px solid var(--accent); padding:20px; z-index:2000; color:white; width: 300px; max-height: 70vh; overflow-y: auto;">
 		<h3>Error:</h3>
@@ -481,6 +485,52 @@
 		<button class="btn stop" id="close-error-window" style="margin-top:15px; width:100%;">Close error window</button>
 	</div>
 
+	<!-- Ventana de ecualización avanzada -->
+	<div id="eq-modal"
+		style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:var(--panel); border:2px solid var(--accent); padding:20px; z-index:3000; color:white; width: 650px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);">
+		<div style="display:flex; justify-content:space-between; margin-bottom: 10px;">
+			<h3 style="margin:0;">🎛️ Advanced EQ System - <span id="eq-track-name" style="color:var(--accent);"></span></h3>
+			<button class="btn stop" onclick="closeEQ()">X</button>
+		</div>
+
+		<canvas id="eq-canvas" title="The visualization of the frequencies will be visible once the track is playing sound" width="610" height="200"
+			style="background:#0a0a14; border:1px solid var(--border); border-radius: 4px; margin-bottom: 15px;"></canvas>
+
+		<div style="display:flex; justify-content: space-between; gap: 10px;">
+			<div style="background:#111; padding:10px; border-radius:4px; flex-grow:1; text-align:center;">
+				<h4 style="margin:0 0 10px 0; color:#3498db;">LOW</h4>
+				Hz:
+				<input type="number" id="eq-low-f-num" min="20" max="500" class="mixer-input">
+				<input type="range" id="eq-low-f" min="20" max="500" step="1"><br>
+				dB:
+				<input type="number" id="eq-low-g-num" min="-24" max="24" class="mixer-input">
+				<input type="range" id="eq-low-g" min="-24" max="24" step="0.5">
+			</div>
+			<div style="background:#111; padding:10px; border-radius:4px; flex-grow:1; text-align:center;">
+				<h4 style="margin:0 0 10px 0; color:#2ecc71;">MID</h4>
+				Hz:
+				<input type="number" id="eq-mid-f-num" min="500" max="4000" class="mixer-input">
+				<input type="range" id="eq-mid-f" min="500" max="4000" step="10"><br>
+				dB:
+				<input type="number" id="eq-mid-g-num" min="-24" max="24" class="mixer-input">
+				<input type="range" id="eq-mid-g" min="-24" max="24" step="0.5"><br>
+				Q:
+				<input type="number" id="eq-mid-q-num" min="0.1" max="10" class="mixer-input">
+				<input type="range" id="eq-mid-q" min="0.1" max="10" step="0.1">
+			</div>
+			<div style="background:#111; padding:10px; border-radius:4px; flex-grow:1; text-align:center;">
+				<h4 style="margin:0 0 10px 0; color:#e74c3c;">HIGH</h4>
+				Hz:
+				<input type="number" id="eq-high-f-num" min="4000" max="20000" class="mixer-input">
+				<input type="range" id="eq-high-f" min="4000" max="20000" step="100"><br>
+				dB:
+				<input type="number" id="eq-high-g-num" min="-24" max="24" class="mixer-input">
+				<input type="range" id="eq-high-g" min="-24" max="24" step="0.5">
+			</div>
+		</div>
+	</div>
+
+	<!-- Menú "de contexto" -->
 	<div id="ctx-menu" style="display:none; position:fixed; background:var(--panel); border:1px solid var(--accent); border-radius:4px; z-index:1000; flex-direction:column; padding:5px; box-shadow: 0 4px 6px rgba(0,0,0,0.5);">
 		<button class="btn blue" id="ctx-copy" style="margin-bottom:2px;">Copy</button>
 		<button class="btn blue" id="ctx-dup" style="margin-bottom:2px;">Duplicate</button>
@@ -506,9 +556,16 @@
 
 		/**
 		 * @typedef {Object} EQ
-		 * @property {number} low Ganancia de frecuencias bajas.
-		 * @property {number} mid Ganancia de frecuencias medias.
-		 * @property {number} high Ganancia de frecuencias altas.
+		 * @property {number} lowGain Aumento de frecuencias graves.
+		 * @property {number} lowF Número a partir del cual las frecuencias se definen como "graves".
+		 * @property {number} midGain Aumento de frecuencias medias.
+		 * @property {number} midF Número a partir del cual las frecuencias se definen como "medias".
+		 * @property {number} midQ Número - .
+		 * @property {number} highGain Aumento de frecuencias agudas.
+		 * @property {number} highF Número a partir del cual las frecuencias se definen como "Agudas".
+		 * @property {number} low [EQ SIMPLE] Aumento de las frecuencias graves.
+		 * @property {number} mid [EQ SIMPLE] Aumento de las frecuencias medias.
+		 * @property {number} high [EQ SIMPLE] Aumento de las frecuencias agudas.
 		*/
 
 		/**
@@ -526,7 +583,7 @@
 		 * @property {string} id Identificador único de la pista.
 		 * @property {string} name Nombre de la pista (puede ser string o null).
 		 * @property {string} type Tipo de instrumento o generador de audio.
-		 * @property {string} group Grupo de pistas al que pertenece.
+		 * @property {string} group Nombre del grupo de pistas al que pertenece.
 		 * @property {string} iconImg Ruta o identificador de la imagen del icono.
 		 * @property {string} color Color hexadecimal o nombre para la UI.
 		 * @property {string} displayMode Modo de visualización en el editor (ej. 'piano', 'wave').
@@ -611,7 +668,7 @@
 		let zoomY = 16; // Zoom vertical (Alto de nota)
 		let snapRes = 1; // División de notas
 
-		// --- SISTEMA DE SELECCIÓN Y PORTAPAPELES ---
+		//#region --- SISTEMA DE SELECCIÓN Y PORTAPAPELES ---
 		let isDraggingSelection = false;
 		let isDrawing = false;
 		let dragStartC = 0, dragStartR = 0;
@@ -622,6 +679,17 @@
 		let clipboard = [];
 		let isSelecting = false;
 		let selBox = { x: 0, y: 0, w: 0, h: 0 };
+		//#endregion
+
+
+		//#region --- ANALIZADOR Y ECUALIZADOR ---
+		const masterAnalyser = A_CTX.createAnalyser();
+		masterAnalyser.fftSize = 1024; // Resolución del espectro
+		const specBufferLen = masterAnalyser.frequencyBinCount;
+		const specDataArray = new Uint8Array(specBufferLen);
+		let eqAnimFrame;
+		let editingEqTrack = 0; // Pista actualmente en la subescena
+		//#endregion
 
 		// --- GESTIÓN DE PISTAS ---
 
@@ -636,8 +704,8 @@
 				id: Date.now() + Math.random(), name: name, type: type,
 				group: '', iconImg: '', color: '#3498db', displayMode: 'melodic',
 				vol: 0.7, pan: 0, att: 0.01, rel: 0.2, flt: 20000,
-				mute: false, solo: false, // Nuevas propiedades
-				eq: { low: 0, mid: 0, high: 0 },
+				mute: false, solo: false,
+				eq: { low: 0, mid: 0, high: 0 }, // Usar las propiedades básicas del ecualizador, hasta que el usuario desee usar ecualizaciones más avanzadas
 				notes: [],
 				triggers: [],
 				sampleId: null, sampleBase64: null, customJS: "", trim: [0, 0]
@@ -705,30 +773,39 @@
 			return isFinite(val) ? val : -1;
 		}
 
-		// NUEVO: Generador de EQ Multibanda en cascada
+		/**
+		 * @param {AudioContext} ctx
+		 * @param {EQ} eqData
+		*/
 		function createEQ(ctx, eqData) {
+			// Graves
 			const low = ctx.createBiquadFilter();
 			low.type = 'lowshelf';
-			low.frequency.value = 320;
-			low.gain.value = parseFloat(eqData.low) || 0;
+			low.frequency.value = eqData.lowF !== undefined ? eqData.lowF : 320;
+			low.gain.value = parseFloat(eqData.lowGain) || parseFloat(eqData.low) || 0;
 
+			// Medios
 			const mid = ctx.createBiquadFilter();
 			mid.type = 'peaking';
-			mid.frequency.value = 1000;
-			mid.gain.value = parseFloat(eqData.mid) || 0;
+			mid.frequency.value = eqData.midF !== undefined ? eqData.midF : 1000;
+			mid.Q.value = eqData.midQ !== undefined ? eqData.midQ : 1;
+			mid.gain.value = parseFloat(eqData.midGain) || parseFloat(eqData.mid) || 0;
 
+			// Agudos
 			const high = ctx.createBiquadFilter();
 			high.type = 'highshelf';
-			high.frequency.value = 3200;
-			high.gain.value = parseFloat(eqData.high) || 0;
+			high.frequency.value = eqData.highF !== undefined ? eqData.highF : 3200;
+			high.gain.value = parseFloat(eqData.highGain) || parseFloat(eqData.high) || 0;
 
+			// Bajo general ("Filt")
 			const flt = ctx.createBiquadFilter();
 			flt.type = 'lowpass';
-			flt.frequency.value = parseFloat(eqData.flt) || 10000;
+			flt.frequency.value = parseFloat(eqData.flt) || 20000;
 
 			low.connect(mid);
 			mid.connect(high);
 			high.connect(flt);
+
 			return { in: low, out: flt }; // Devuelve los puntos de entrada y salida
 		}
 
@@ -832,7 +909,15 @@
 			}
 
 			comp.connect(mGain);
-			mGain.connect(dest);
+
+			// -Implementación del analizador-
+			// Solamente conectar el gainnode si estamos en el contexto correcto
+			if (ctx === A_CTX && typeof masterAnalyser !== 'undefined') {
+				mGain.connect(masterAnalyser);
+				masterAnalyser.connect(dest);
+			} else {
+				mGain.connect(dest);
+			}
 
 			return eq;
 		}
@@ -878,7 +963,7 @@
 			const tc = document.getElementById('tracks-container');
 			tc.innerHTML = '';
 
-			/** @type { Record<string, { t: TrackConfig, i: number }[] } */
+			/** @type { Record<string, { t: TrackConfig, i: number }[]> } */
 			const groups = {};
 
 			s.tracks.forEach((t, i) => {
@@ -920,7 +1005,7 @@
 					cards.forEach(card => card.style.display = isCollapsed ? 'none' : 'block');
 				});
 
-				// Mute de Grupo
+				// Muteo de grupo
 				grpDiv.querySelector('.grp-mute').addEventListener('click', () => {
 					const newState = !allMuted;
 					groups[gName].forEach(item => {
@@ -930,7 +1015,7 @@
 					buildTracks();
 				});
 
-				// Solo de Grupo
+				// Solo de grupo
 				grpDiv.querySelector('.grp-solo').addEventListener('click', () => {
 					const newState = !anySolo;
 					groups[gName].forEach(item => {
@@ -950,6 +1035,14 @@
 					d.setAttribute('data-group', t.group);
 					d.style.borderLeft = `4px solid ${t.color}`;
 
+					// Analizar si realmente el ecualizador de pistas avanzado no se ha usado en absoluto, y por tanto, eliminar cualquier rastro anterior que indique que sí que estuvo en un momento pasado
+					// (Para que el botón EQ no salga verde)
+					if (t.eq.lowGain !== undefined) {
+						if (t.eq.lowGain === 0 && t.eq.lowF === 250 && t.eq.midGain === 0 && t.eq.midF === 1000 && t.eq.midQ === 1 && t.eq.highGain === 0 && t.eq.highF === 4000) {
+							t.eq = { low: 0, mid: 0, high: 0 };
+						}
+					}
+
 					d.addEventListener('mousedown', (e) => {
 						if (!['SELECT', 'INPUT', 'BUTTON', 'IMG', 'LABEL'].includes(e.target.tagName)) {
 							actTrk = i;
@@ -966,7 +1059,7 @@
 						return `
 							<div class="knob-group" title="${title}">
 								${label}
-								<input type="number" min="${inputMin || min}" max="${inputMax || max}" step="${step}" value="${val}" id="${idPrefix}-input-${trackIdx}" class="mixer-input">
+								<input type="number" min="${inputMin || min}" max="${inputMax || max}" value="${val}" id="${idPrefix}-input-${trackIdx}" class="mixer-input">
 								<input type="range" min="${min}" max="${max}" step="${step}" value="${val}" id="${idPrefix}-slider-${trackIdx}">
 							</div>`;
 					}
@@ -988,7 +1081,7 @@
 							<div class="track-controls">
 								<button class="btn t-mute" title="Mute/Unmute this track" style="padding:4px 6px; background:${t.mute ? '#e74c3c' : '#7f8c8d'};">M</button>
 								<button class="btn t-solo" title="Solo/Unsolo this track" style="padding:4px 6px; background:${t.solo ? '#f1c40f' : '#7f8c8d'}; color:#000;">S</button>
-								<button class="btn t-eq" title="Open equalization menu" style="padding:4px 6px; background:${t.solo ? '#27ae60' : '#7f8c8d'}; color:#000;">EQ</button>
+								<button class="btn t-eq" title="Open equalization menu" style="padding:4px 6px; background:${typeof t.eq.lowGain !== 'undefined' ? '#27ae60' : '#7f8c8d'}; color:#000;">EQ</button>
 								
 								<select class="track-mode" style="width:70px;" title="The type of piano roll this track has">
 									<option value="melodic" title="The piano roll has more than 1 tone" ${t.displayMode === 'melodic' ? 'selected' : ''}>Multi-tone</option>
@@ -1059,6 +1152,9 @@
 						s.tracks[i].solo = !s.tracks[i].solo;
 						s.tracks[i].mute = false;
 						buildTracks();
+					});
+					d.querySelector('.t-eq').addEventListener('click', () => {
+						openEQ(i);
 					});
 
 					// Re-vincular Sliders de forma segura
@@ -1733,7 +1829,7 @@
 			}
 		});
 
-		// --- MODAL Y EDITORES AVANZADOS (Sampler / Custom JS) ---
+		//#region --- MODAL Y EDITORES AVANZADOS (Sampler / Custom JS) ---
 		function openAdvanced(idx) {
 			actTrk = idx;
 			buildTracks();
@@ -1830,6 +1926,82 @@
 		// Guardar Trim de Sampler al cambiar inputs
 		document.getElementById('samp-start').addEventListener('change', (e) => s.tracks[actTrk].trim[0] = parseFloat(e.target.value));
 		document.getElementById('samp-end').addEventListener('change', (e) => s.tracks[actTrk].trim[1] = parseFloat(e.target.value));
+
+		// Función para abrir la subescena del EQ
+		function openEQ(trackIdx) {
+			editingEqTrack = trackIdx;
+			const t = s.tracks[trackIdx];
+
+			// Si es una pista antigua, inicializamos los datos de EQ avanzados
+			if (t.eq.lowGain === undefined) {
+				t.eq = { lowGain: 0, lowF: 250, midGain: 0, midF: 1000, midQ: 1, highGain: 0, highF: 4000 };
+			}
+
+			document.getElementById('eq-track-name').innerText = t.name;
+
+			// Vincular valores a los sliders y a sus respectivos inputs de texto
+			const mapSlider = (id, prop) => {
+				for (let i = 0; i <= 1; i++) {
+					const el = document.getElementById(id + (i === 1 ? "-num" : ""));
+					el.value = t.eq[prop];
+					el.oninput = (e) => {
+						saveState();
+						t.eq[prop] = parseFloat(e.target.value);
+						// Actualizar también el otro elemento conectado a este
+						document.getElementById(id + (i === 0 ? "-num" : "")).value = e.target.value;
+					};
+				}
+			};
+
+			mapSlider('eq-low-f', 'lowF'); mapSlider('eq-low-g', 'lowGain');
+			mapSlider('eq-mid-f', 'midF'); mapSlider('eq-mid-g', 'midGain'); mapSlider('eq-mid-q', 'midQ');
+			mapSlider('eq-high-f', 'highF'); mapSlider('eq-high-g', 'highGain');
+
+			document.getElementById('eq-modal').style.display = 'block';
+			drawSpectrum(); // Iniciar animación
+		}
+
+		function closeEQ() {
+			document.getElementById('eq-modal').style.display = 'none';
+			cancelAnimationFrame(eqAnimFrame);
+
+			buildTracks();
+		}
+
+		// Bucle de renderizado del Canvas del Espectro
+		function drawSpectrum() {
+			if (document.getElementById('eq-modal').style.display === 'none') return;
+
+			eqAnimFrame = requestAnimationFrame(drawSpectrum);
+
+			masterAnalyser.getByteFrequencyData(specDataArray);
+			/** @type {HTMLCanvasElement} */
+			const canvas = document.getElementById('eq-canvas');
+			/** @type {CanvasRenderingContext2D} */
+			const ctx = canvas.getContext('2d');
+
+			// Limpiar fondo con estela (efecto DAW profesional)
+			ctx.fillStyle = 'rgba(10, 10, 20, 0.4)';
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+			const barWidth = (canvas.width / specBufferLen) * 2.5;
+			let x = 0;
+
+			for (let i = 0; i < specBufferLen; i++) {
+				const barHeight = specDataArray[i] * 0.75;
+
+				// Color dinámico basado en la frecuencia (Graves=Rojo, Medios=Verde, Agudos=Azul)
+				const r = barHeight + (25 * (i / specBufferLen));
+				const g = 250 * (i / specBufferLen);
+				const b = 150;
+
+				ctx.fillStyle = `rgb(${r},${g},${b})`;
+				ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+				x += barWidth + 1;
+			}
+		}
+
+		//#endregion
 
 		//#region --- SECUENCIADOR Y RENDERIZADO ---
 		let isPlay = false, cur = 0, nxtTime = 0, tid;

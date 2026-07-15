@@ -337,25 +337,24 @@
 		<button class="btn" id="play-btn" title="Plays or Pauses the DAW Player">▶ PLAY</button>
 		<button class="btn stop" id="stop-btn">⏹ STOP</button>
 
-		<div style="display:flex; gap:2px; margin-right: 10px;">
+		<div style="display:flex; gap:4.5px;">
 			<button class="btn blue" id="btn-undo" title="Undo (Ctrl+Z)">↩️</button>
 			<button class="btn blue" id="btn-redo" title="Redo (Ctrl+Y)">↪️</button>
+			<input type="number" id="zoom-x" title="X Zoom" min="10" max="100" value="30" style="width: 20px; color: #ce5aff; background-color: #000;" class="mixer-input">
+			<input type="number" id="zoom-y" title="Y Zoom" min="8" max="40" value="16" style="width: 20px; color: #ce5aff; background-color: #000;" class="mixer-input">
 		</div>
 
 		<label>BPM: <input type="number" id="bpm" value="128" style="width: 37px;"></label>
 		<label>Steps: <input type="number" id="steps" value="64" style="width: 38px;" placeholder="64"></label>
 		<input type="text" id="song_name" style="width: 80px;" placeholder="Song Name" title="The name of the song or project">
 
-
-		<label style="font-size: 10px;">Snap:
-			<select id="grid-snap" class="btn blue" style="padding: 1px;">
-				<option value="4">Quarter (1/4)</option>
-				<option value="2">Eighth note (1/8)</option>
-				<option value="1" selected>Sixteenth note (1/16)</option>
-				<option value="0.5">Thirty-second note (1/32)</option>
-				<option value="0.25">Sixty-fourth note (1/64)</option>
-			</select>
-		</label>
+		<select id="grid-snap" class="btn blue" style="padding: 4px;" title="Snap">
+			<option value="4" title="Quarter of a note">1 / 4</option>
+			<option value="2" title="Eighth of a note">1 / 8</option>
+			<option value="1" title="Sixteenth of a note" selected>1 / 16</option>
+			<option value="0.5" title="Thirty-second note">1 / 32</option>
+			<option value="0.25" title="Sixty-fourth note">1 / 64</option>
+		</select>
 
 		<button class="btn blue" id="save-template" title="Saves or makes a new template">Save Template</button>
 		<select class="btn blue" id="user-templates" style="width: 120px;" title="A template is a predefined set of notes. Useful for making song or drums patterns">
@@ -2280,6 +2279,20 @@
 
 			document.getElementById('btn-undo').addEventListener('click', undo);
 			document.getElementById('btn-redo').addEventListener('click', redo);
+
+			document.getElementById('zoom-x').addEventListener('change', e => {
+				zoomX = parseInt(e.target.value);
+				buildTimeline();
+				if (typeof resizeGrid === 'function') resizeGrid();
+				draw();
+			});
+
+			document.getElementById('zoom-y').addEventListener('change', e => {
+				zoomY = parseInt(e.target.value);
+				buildKeys();
+				if (typeof resizeGrid === 'function') resizeGrid();
+				draw();
+			});
 
 			document.getElementById('bpm').addEventListener('change', (e) => {
 				saveState();

@@ -340,6 +340,8 @@
 		<div style="display:flex; gap:4.5px;">
 			<button class="btn blue" id="btn-undo" title="Undo (Ctrl+Z)">↩️</button>
 			<button class="btn blue" id="btn-redo" title="Redo (Ctrl+Y)">↪️</button>
+			<input type="number" id="zoom-x" title="X Zoom" min="10" max="100" value="30" style="width: 20px; color: #ce5aff; background-color: #000;" class="mixer-input">
+			<input type="number" id="zoom-y" title="Y Zoom" min="8" max="40" value="16" style="width: 20px; color: #ce5aff; background-color: #000;" class="mixer-input">
 		</div>
 
 		<label>BPM: <input type="number" id="bpm" value="128" style="width: 37px;"></label>
@@ -2277,6 +2279,20 @@
 
 			document.getElementById('btn-undo').addEventListener('click', undo);
 			document.getElementById('btn-redo').addEventListener('click', redo);
+
+			document.getElementById('zoom-x').addEventListener('change', e => {
+				zoomX = parseInt(e.target.value);
+				buildTimeline();
+				if (typeof resizeGrid === 'function') resizeGrid();
+				draw();
+			});
+
+			document.getElementById('zoom-y').addEventListener('change', e => {
+				zoomY = parseInt(e.target.value);
+				buildKeys();
+				if (typeof resizeGrid === 'function') resizeGrid();
+				draw();
+			});
 
 			document.getElementById('bpm').addEventListener('change', (e) => {
 				saveState();

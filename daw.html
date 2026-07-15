@@ -372,7 +372,12 @@
 
 		<label style="font-size:10px;"><input type="checkbox" id="show-wave" checked>Waveforms</label>
 
+		<button class="btn" style="background:#34495e;" onclick="openNEXOSettings()">⚙️</button>
+
 		<div style="width: 2px; height: 20px; background: var(--border); margin: 0 3px;"></div>
+
+
+		<!-- TODO: Unificar en un mismo menú los botones de Importar y Exportar -->
 
 		<label class="btn blue" style="cursor: pointer;">
 			Import Project<input type="file" id="load-project" style="display:none;" accept=".json"></label>
@@ -433,7 +438,7 @@
 	<div id="tool-modal" class="modal">
 		<div class="modal-content">
 			<div style="display:flex; justify-content:space-between;">
-				<h3 id="modal-title" style="margin:0; color:var(--accent);">Editor Avanzado</h3>
+				<h3 id="modal-title" style="margin:0; color:var(--accent);">Editing</h3>
 				<button class="btn stop" id="delete-track" title="Closes this menu">X</button>
 			</div>
 
@@ -527,6 +532,11 @@
 				<input type="range" id="eq-high-g" min="-24" max="24" step="0.5">
 			</div>
 		</div>
+	</div>
+
+	<!-- Ventana de ajustes globales -->
+	<div id="settings-modal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:var(--panel); border:2px solid var(--accent); padding:20px; z-index:3000; color:white; width: 300px; border-radius: 8px;">
+		<!-- Todo se define en la función openNEXOSettings() -->
 	</div>
 
 	<!-- Menú "de contexto" -->
@@ -641,14 +651,40 @@
 			tracks: [],
 		};
 
+		let NEXOConfig = {
+			ghostAlpha: 0.2,
+			autoScroll: true,
+			maxUndoRedo: 50,
+			/** En segundos */
+			autoSaveInterval: 15
+		};
+
+		function saveSettings() {
+			console.log("Saving NEXO Settings...");
+			// Convertimos el objeto a texto (JSON) y lo guardamos con un nombre único
+			localStorage.setItem('NEXO_config', JSON.stringify(NEXOConfig));
+		}
+
+		function loadSettings() {
+			const saved = localStorage.getItem('NEXO_config');
+			if (saved) {
+				try {
+					// Unir opciones antiguas y nuevas
+					const parsedSettings = JSON.parse(saved);
+					NEXOConfig = { ...NEXOConfig, ...parsedSettings };
+				} catch (e) {
+					console.error("Error reading saved settings", e);
+				}
+			}
+		}
+
 		let undoStack = [];
 		let redoStack = [];
-		const MAX_HISTORY = 50; // Límite de pasos para no saturar la memoria RAM
 
 		function saveState() {
 			// Hacemos un clon profundo rápido convirtiéndolo a texto y lo guardamos
 			undoStack.push(JSON.stringify(s));
-			if (undoStack.length > MAX_HISTORY) undoStack.shift(); // Borramos el más antiguo si pasamos el límite
+			if (undoStack.length > NEXOConfig.maxUndoRedo) undoStack.shift(); // Borramos el más antiguo si pasamos el límite
 			redoStack = []; // Al hacer una nueva acción, el futuro alternativo (redo) se borra
 		}
 
@@ -1188,7 +1224,7 @@
 			buildTracks();
 		}
 
-		let customTemplates = JSON.parse(localStorage.getItem('daw_templates')) || [];
+		let customTemplates = JSON.parse(localStorage.getItem('NEXO_templates')) || [];
 
 		function updateTemplateMenu() {
 			const menu = document.getElementById('user-templates');
@@ -1227,7 +1263,7 @@
 			clone.forEach(n => n.c -= minC);
 
 			customTemplates.push({ id: Date.now().toString(), name, tag, notes: clone });
-			localStorage.setItem('daw_templates', JSON.stringify(customTemplates));
+			localStorage.setItem('NEXO_templates', JSON.stringify(customTemplates));
 			updateTemplateMenu();
 			alert("Template Saved.");
 		}
@@ -1361,7 +1397,7 @@
 				const isActiveTrack = (idx === actTrk);
 
 				// Ghost Notes (Opacidad baja para las pistas no activas)
-				cCtx.globalAlpha = isActiveTrack ? 1.0 : 0.2;
+				cCtx.globalAlpha = isActiveTrack ? 1.0 : NEXOConfig.ghostAlpha;
 
 				track.notes.forEach(n => {
 					const isSel = isActiveTrack && selection.includes(n);
@@ -1421,8 +1457,7 @@
 
 
 
-		// ------ INTERACCIÓN RATÓN Y TECLADO (Selección múltiple, Paneo, Edición) ----------------
-
+		//#region ------ INTERACCIÓN RATÓN Y TECLADO (Selección múltiple, Paneo, Edición) ----------------
 
 		let interact = false, aNote = null, startMouse = { x: 0, y: 0 };
 		/** Set de las teclas que el usuario está presionando */
@@ -1828,7 +1863,9 @@
 			}
 		});
 
-		//#region --- MODAL Y EDITORES AVANZADOS (Sampler / Custom JS) ---
+		//#endregion
+
+		//#region --- VENTANAS (Subescenas) Y EDITORES AVANZADOS (Sampler / Custom JS) ---
 		function openAdvanced(idx) {
 			actTrk = idx;
 			buildTracks();
@@ -1998,6 +2035,116 @@
 				ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
 				x += barWidth + 1;
 			}
+		}
+
+		// Ventana de ajustes
+		function openNEXOSettings() {
+			/** @type {HTMLDivElement} */
+			const div = document.getElementById('settings-modal');
+			if (!div) return;
+			div.innerHTML = "";
+
+			setElementDisplay('settings-modal', 'block');
+
+			const d = document.createElement('div');
+
+			/**
+			 * @typedef {Object} Option
+			 * @property {string} propertyName Nombre de la propiedad en NEXOConfig
+			 * @property {string} name
+			 * @property {string} title
+			 * @property {string} inputType Range, Number, Checkbox, etc
+			 * @property {boolean} numberIsFloat Únicamente usado si inputType es Range o Number
+			 * @property {any} defaultValue
+			 * @property {any} value
+			 * @property {number} min
+			 * @property {number} max
+			 * @property {number} step
+			 * @property {Function} updateFunction
+			*/
+
+			/** @type { Option[ ] }*/
+			const options = [];
+
+			options.push({
+				propertyName: "ghostAlpha",
+				name: "Ghost Notes Opacity",
+				//title: "",
+				inputType: "range",
+				numberIsFloat: true,
+				defaultValue: 0.2, min: 0, max: 1, step: 0.05,
+				updateFunction: draw
+			});
+
+			options.push({
+				propertyName: "autoScroll",
+				name: "Auto-Scroll when dragging/selecting",
+				//title: "",
+				inputType: "checkbox",
+				defaultValue: true,
+			});
+
+			options.push({
+				propertyName: "maxUndoRedo",
+				name: "Max Undo History",
+				title: "WARNING, THIS SETTING WILL AFFECT YOUR MEMORY, AS THE UNDO-REDO SYSTEM IS STILL WORK ON PROGRESS.",
+				inputType: "range",
+				numberIsFloat: false,
+				defaultValue: 50, min: 10, max: 100, step: 1
+			});
+
+			options.push({
+				propertyName: "autoSaveInterval",
+				name: "Time between auto saves (in seconds)",
+				inputType: "range",
+				numberIsFloat: true,
+				defaultValue: 15, min: 7, max: 900, step: 1,
+				updateFunction: initAutoSave
+			});
+
+			let html = `
+				<h3 style="margin-top:0;">NEXO D.A.W. Settings</h3>
+			`;
+
+			options.forEach((option) => {
+				option.value = NEXOConfig[option.propertyName];
+
+				html += `
+					<label title="${(option.title || '') + ` (Default: ${option.defaultValue})`}" style="display: block; margin-bottom: 10px;">${option.name + (option.inputType === "range" ? `: <span id="val-${option.propertyName}">${option.value}</span>` : "")}
+						<input type="${option.inputType}" id="set-${option.propertyName}" ${option.inputType === 'range' ? `min="${option.min}" max="${option.max}" step="${option.step}" value="${option.value}"` : (option.inputType === 'checkbox' ? (option.value ? 'checked' : '') : option.inputType === 'number')}>
+					</label>
+				`;
+			});
+
+			html += `
+				<button class="btn stop" onclick="{ saveSettings(); setElementDisplay('settings-modal', 'none'); }" style="width:100%; margin-top:10px;">Close And Save Settings</button>
+			`;
+
+			d.innerHTML = html;
+			div.appendChild(d);
+
+			options.forEach((option) => {
+				if (option.inputType === 'range' || option.inputType === 'number') {
+					document.getElementById(`set-${option.propertyName}`).addEventListener('input', e => {
+						if (option.numberIsFloat)
+							NEXOConfig[option.propertyName] = parseFloat(e.target.value);
+						else
+							NEXOConfig[option.propertyName] = parseInt(e.target.value);
+
+						setElementText(`val-${option.propertyName}`, NEXOConfig[option.propertyName]);
+
+						if (option.updateFunction)
+							option.updateFunction();
+					});
+				} else if (option.inputType === 'checkbox') {
+					document.getElementById(`set-${option.propertyName}`).addEventListener('change', e => {
+						NEXOConfig[option.propertyName] = e.target.checked;
+
+						if (option.updateFunction)
+							option.updateFunction();
+					});
+				}
+			});
 		}
 
 		//#endregion
@@ -2178,7 +2325,7 @@
 			const blob = new Blob([new DataView(wavData)], { type: 'audio/wav' });
 			const a = document.createElement('a');
 			a.href = URL.createObjectURL(blob);
-			a.download = `${s.name || 'DAW_Project'}.wav`;
+			a.download = `${s.name || 'NEXO_Project'}.wav`;
 			document.body.appendChild(a);
 			a.click();
 			a.remove();
@@ -2225,26 +2372,37 @@
 			return bufferArr;
 		}
 
-		// --- SISTEMA DE AUTOGUARDADO (LocalStorage) ---
+		//#endregion
+
+		//#region --- SISTEMA DE AUTOGUARDADO (LocalStorage) ---
+		let autoSaveId = -1;
+
 		function autoSave() {
 			if (s.tracks.length > 0) {
-				localStorage.setItem('daw_autosave_project', JSON.stringify(s));
+				localStorage.setItem('NEXO_autosave_project', JSON.stringify(s));
 				console.log("Autosave completed: " + new Date().toLocaleTimeString());
 			}
 		}
-		setInterval(autoSave, 15000); // Autoguardar cada 15 segundos
 
-		setTimeout(() => {
-			const saved = localStorage.getItem('daw_autosave_project');
-			if (saved && confirm("Se ha encontrado un autoguardado reciente. ¿Deseas restaurar la sesión?")) {
-				try {
-					s = JSON.parse(saved);
-				} catch (e) {
-					console.error("Error leyendo autoguardado");
+		function initAutoSave() {
+			if (autoSaveId !== -1) clearInterval(autoSaveId);
+
+			autoSaveId = setInterval(autoSave, NEXOConfig.autoSaveInterval * 1000); // Autoguardar cada NEXOConfig.autoSaveInterval segundos
+		}
+
+		function initLastAutoSave() {
+			setTimeout(() => {
+				const saved = localStorage.getItem('NEXO_autosave_project');
+				if (saved && confirm("Se ha encontrado un autoguardado reciente. ¿Deseas restaurar la sesión?")) {
+					try {
+						s = JSON.parse(saved);
+					} catch (e) {
+						console.error("Error leyendo autoguardado");
+					}
 				}
-			}
-			buildUI();
-		}, 500);
+				buildUI();
+			}, 500);
+		}
 
 		//#endregion
 
@@ -2270,6 +2428,8 @@
 		});
 
 		//#endregion
+
+		//#region --- INICIALIZADORES ---
 
 		function initEventListeners() {
 			console.log("Adding the layout listeners...");
@@ -2588,10 +2748,15 @@
 		}
 
 		function init() {
+			loadSettings();
 			initEventListeners();
+			initAutoSave();
+			initLastAutoSave();
 		}
 
-		// ------------CLOUD LIBRARY CODE (es... largo.) ------------
+		//#endregion
+
+		//#region ------------CLOUD LIBRARY CODE (es... largo.) ------------
 		function openLibrary() {
 			// Lista de las CATEGORÍAS de sonidos.
 			const cloudLibrary = [
@@ -2744,6 +2909,9 @@
 			setElementDisplay('library-modal', 'block');
 		}
 
+		//#endregion
+
+		//#region --- DESHACER Y REHACER (en estado de proceso todavía) ---
 
 		function undo() {
 			if (undoStack.length === 0) return;
@@ -2765,31 +2933,10 @@
 			draw();
 		}
 
+		//#endregion
+
 		init();
 		buildUI();
-		/*
-		// INICIALIZACIÓN SEGURA PARA GOOGLE APPS SCRIPT
-		if (document.readyState === 'loading') {
-			document.addEventListener('DOMContentLoaded', () => {
-				setTimeout(() => {
-					try {
-						init();
-						buildUI();
-					} catch (e) {
-						console.error('Init error:', e);
-					}
-				}, 100);
-			});
-		} else {
-			setTimeout(() => {
-				try {
-					init();
-					buildUI();
-				} catch (e) {
-					console.error('Init error:', e);
-				}
-			}, 100);
-		}*/
 	</script>
 </body>
 

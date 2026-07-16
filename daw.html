@@ -109,7 +109,7 @@
 
 		.mixer-strip {
 			display: flex;
-			gap: 5px;
+			gap: 15px;
 			font-size: 10px;
 			margin-top: 5px;
 			background: rgba(0, 0, 0, 0.2);
@@ -351,7 +351,7 @@
 		<select id="grid-snap" class="btn blue" style="padding: 4px;" title="Snap">
 			<option value="4" title="Quarter of a note">1 / 4</option>
 			<option value="2" title="Eighth of a note">1 / 8</option>
-			<option value="1" title="Sixteenth of a note" selected>1 / 16</option>
+			<option value="1" title="Sixteenth of a note (Default)" selected>1 / 16</option>
 			<option value="0.5" title="Thirty-second note">1 / 32</option>
 			<option value="0.25" title="Sixty-fourth note">1 / 64</option>
 		</select>
@@ -460,15 +460,6 @@
 		</div>
 	</div>
 
-	<!-- Ventana de la librería de audios -->
-	<div id="library-modal"
-		style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%); background:var(--panel); border:2px solid var(--accent); padding:20px; z-index:2000; color:white; width: 300px; max-height: 70vh; overflow-y: auto;">
-		<h3>Sample library (from the cloud)</h3>
-		<p style="font-size:11px; color:#aaa;">This files will only be downloaded on click.</p>
-		<div id="library-list" style="display:flex; flex-direction:column; gap:5px;"></div>
-		<button class="btn stop" id="close-library" style="margin-top:15px; width:100%;">Close</button>
-	</div>
-
 	<!-- Ventana de ecualización avanzada -->
 	<div id="eq-modal"
 		style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:var(--panel); border:2px solid var(--accent); padding:20px; z-index:3000; color:white; width: 650px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);">
@@ -516,20 +507,21 @@
 
 	<!-- Ventana de editor de samples -->
 	<div id="sample-editor-modal"
-		style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:var(--panel); border:2px solid var(--accent); padding:20px; z-index:4000; color:white; width: 600px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);">
+		style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:var(--panel); border:2px solid var(--accent); padding:20px; z-index:4000; color:white; width: 900px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);">
 		<div style="display:flex; justify-content:space-between; margin-bottom: 10px;">
 			<h3 style="margin:0;">Samples Editor <span id="sample-track-name" style="color:var(--accent);"></span></h3>
-			<button class="btn stop" onclick="closeSampleEditor()">X</button>
-		</div>
-
-		<div style="display:flex; justify-content: center; margin-bottom: 10px; flex-direction:column">
 			<label class="btn blue">Load Audio File (WAV/MP3)<input type="file" id="load-audio" style="display:none;" accept="audio/*"></label>
+			<button class="btn blue" id="open-library">Open Cloud Library</button>
+			<button class="btn" id="sample-play-btn" onclick="toggleSamplePreview()" style="background:#e67e22; padding:4px 10px; font-weight:bold;">▶ Preview</button>
+			<button class="btn stop" onclick="closeSampleEditor()">X</button>
 		</div>
 
 		<div id="sample-wave-canvas-parent" style="position: relative; width: 100%; height: 150px; background:#0a0a14; border:1px solid var(--border); border-radius:4px; margin-bottom: 15px;">
 			<canvas id="sample-wave-canvas" width="600" height="150" style="position: absolute; left:0; top:0;"></canvas>
 			<div id="trim-mask-start" style="position:absolute; left:0; top:0; height:100%; width:0%; background:rgba(0,0,0,0.7);"></div>
 			<div id="trim-mask-end" style="position:absolute; right:0; top:0; height:100%; width:0%; background:rgba(0,0,0,0.7);"></div>
+
+			<div id="playhead-line" style="position:absolute; left:0; top:0; height:100%; width:2px; background:#fff; box-shadow: 0 0 5px #fff; display:none; pointer-events:none; z-index: 10;"></div>
 		</div>
 
 		<div style="display:flex; justify-content: space-between; gap: 10px; column-gap: 20px;">
@@ -542,20 +534,25 @@
 				<input type="range" id="trim-out-slider" min="0" max="100" step="0.1" value="100" style="width:100%;">
 			</div>
 		</div>
+	</div>
 
-		<div style="display:flex; justify-content: center; margin-bottom: 10px; flex-direction:column">
-			<button class="btn blue" id="open-library">Open Cloud Library</button>
-		</div>
+	<!-- Ventana de la librería de audios -->
+	<div id="library-modal"
+		style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%); background:var(--panel); border:2px solid var(--accent); padding:20px; z-index:18000; color:white; width: 300px; max-height: 70vh; overflow-y: auto;">
+		<h3>Sample library (from the cloud)</h3>
+		<p style="font-size:11px; color:#aaa;">This files will only be downloaded on click.</p>
+		<div id="library-list" style="display:flex; flex-direction:column; gap:5px;"></div>
+		<button class="btn stop" id="close-library" style="margin-top:15px; width:100%;">Close</button>
 	</div>
 
 	<!-- Ventana de ajustes globales -->
-	<div id="settings-modal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:var(--panel); border:2px solid var(--accent); padding:20px; z-index:3000; color:white; width: 300px; border-radius: 8px;">
+	<div id="settings-modal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:var(--panel); border:2px solid var(--accent); padding:20px; z-index:19000; color:white; width: 300px; border-radius: 8px;">
 		<!-- Todo se define en la función openNEXOSettings() -->
 	</div>
 
 	<!-- Ventana de errores -->
 	<div id="error-modal"
-		style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%); background:var(--panel); border:2px solid var(--accent); padding:20px; z-index:2000; color:white; width: 300px; max-height: 70vh; overflow-y: auto;">
+		style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%); background:var(--panel); border:2px solid var(--accent); padding:20px; z-index:20000; color:white; width: 300px; max-height: 70vh; overflow-y: auto;">
 		<h3>Error:</h3>
 		<div id="error-description" style="background:#222; padding:10px; font-size:11px; border-radius:4px; max-height:100px; overflow-y:auto;">
 			Error text
@@ -1140,7 +1137,7 @@
 							<div class="track-controls">
 								<button class="btn t-mute" title="Mute/Unmute this track" style="padding:4px 6px; background:${t.mute ? '#e74c3c' : '#7f8c8d'};">M</button>
 								<button class="btn t-solo" title="Solo/Unsolo this track" style="padding:4px 6px; background:${t.solo ? '#f1c40f' : '#7f8c8d'}; color:#000;">S</button>
-								<button class="btn t-eq" title="Open equalization menu" style="padding:4px 6px; background:${typeof t.eq.lowGain !== 'undefined' ? '#27ae60' : '#7f8c8d'}; color:#000;">EQ</button>
+								<button class="btn t-eq" title="Open equalization menu" style="padding:4px 6px; background:${typeof t.eq.lowGain !== 'undefined' ? '#2ecc71' : '#7f8c8d'}; color:#000;">EQ</button>
 								
 								<select class="track-mode" style="width:70px;" title="The type of piano roll this track has">
 									<option value="melodic" title="The piano roll has more than 1 tone" ${t.displayMode === 'melodic' ? 'selected' : ''}>Multi-tone</option>
@@ -1913,17 +1910,21 @@
 
 		// Editor de samples
 		let activeSampleTrack = null;
+		let currentRenderId = 0;
+		let previewSource = null;
+		let previewStartTime = 0;
+		let previewAnimFrame = null;
+		let isPreviewing = false;
 
 		function openSampleEditor(trackIdx) {
 			const t = s.tracks[trackIdx];
 			const trackHasSample = t.sampleId && sampleBuffers[t.sampleId];
 
-			document.getElementById('sample-wave-canvas').width = parseInt(document.getElementById('sample-wave-canvas-parent').offsetWidth);
-
 			document.getElementById('trim-in-slider').disabled
 				= document.getElementById('trim-out-slider').disabled
 				= document.getElementById('trim-in-num').disabled
 				= document.getElementById('trim-out-num').disabled
+				= document.getElementById('sample-play-btn').disabled
 				= !trackHasSample;
 
 			activeSampleTrack = t;
@@ -1985,57 +1986,130 @@
 				numOut.onchange = (e) => handleTrimChange(false, e.target.value, false);
 
 				syncUI();
-				drawSampleWaveEditor(t.sampleId);
-			}
 
-			setElementDisplay('sample-editor-modal', 'block');
+				// Abrir ventana de edición de samples
+				document.getElementById('sample-editor-modal').style.display = 'block';
+
+				// Darle un tiempo al motor de CSS del navegador para evitar problemas de renderizado
+				setTimeout(() => {
+					// Ajustar el canvas al ancho completo
+					document.getElementById('sample-wave-canvas').width = parseInt(document.getElementById('sample-wave-canvas-parent').offsetWidth);
+
+					drawSampleWaveEditor(t.sampleId);
+				}, 10);
+			} else {
+				// Solamente abrir la ventana de edición de samples
+				setElementDisplay('sample-editor-modal', 'block');
+			}
 		}
 
 		function closeSampleEditor() {
-			document.getElementById('sample-editor-modal').style.display = 'none';
+			setElementDisplay('sample-editor-modal', 'none');
 			activeSampleTrack = null;
+
+			stopSamplePreview();
 		}
 
-		function drawSampleWaveEditor(sampleId) {
-			const canvas = document.getElementById('sample-wave-canvas');
-			const ctx = canvas.getContext('2d');
-			const buf = sampleBuffers[sampleId].getChannelData(0);
+		// 1.
+		async function getEqBuffer(originalBuffer, eqConfig) {
+			const offCtx = new OfflineAudioContext(originalBuffer.numberOfChannels, originalBuffer.length, originalBuffer.sampleRate);
+			const source = offCtx.createBufferSource();
+			source.buffer = originalBuffer;
+
+			const eqChain = createEQ(offCtx, eqConfig);
+			source.connect(eqChain.in);
+			eqChain.out.connect(offCtx.destination);
+
+			source.start(0);
+			return await offCtx.startRendering(); // Se ejecuta a velocidad máxima de CPU
+		}
+
+		// 2.
+		/**
+		 * @param {CanvasRenderingContext2D} ctx
+		*/
+		// 2. Dibujar envolvente de onda (Algoritmo de Polígono Sólido)
+		function drawWaveOnCanvas(ctx, buf, width, height, color) {
+			const step = Math.ceil(buf.length / width);
+			const amp = height / 2;
 			
-			ctx.clearRect(0, 0, canvas.width, canvas.height);
-			ctx.beginPath();
-			ctx.strokeStyle = '#2ecc71'; // Color verde DaVinci
+			ctx.fillStyle = color;
 			
-			const step = Math.ceil(buf.length / canvas.width);
-			const amp = canvas.height / 2;
-			
-			for(let i = 0; i < canvas.width; i++) {
-				let min = 1.0, max = -1.0;
-				// Evitar dibujar exceso
-				let hasData = false;
+			// Recorrer cada columna de píxeles del lienzo
+			for(let i = 0; i < width; i++) {
+				let min = 0, max = 0;
+				let hasValidData = false;
 				
+				// Extraer la amplitud máxima y mínima del bloque
 				for (let j = 0; j < step; j++) {
 					const idx = (i * step) + j;
-					
-					// Romper el bucle si el waveform se está saliendo del buffer real de audio
 					if (idx >= buf.length) break; 
 					
 					const datum = buf[idx];
-					if (datum < min) min = datum;
-					if (datum > max) max = datum;
-					hasData = true;
+					
+					// Ignorar NaNs e infinitos generados por resonancias inestables
+					if (isFinite(datum)) {
+						if (!hasValidData) {
+							min = datum; max = datum; hasValidData = true;
+						} else {
+							if (datum < min) min = datum;
+							if (datum > max) max = datum;
+						}
+					}
 				}
 				
-				// Si no hay datos (final del archivo o audio corto)
-				// Forzar la amplitud a 0 (silencio / línea plana)
-				if (!hasData) {
-					min = 0;
-					max = 0;
-				}
+				// Limitar la ganancia extrema visualmente (Clipping)
+				min = Math.max(-1.0, min);
+				max = Math.min(1.0, max);
 				
-				ctx.moveTo(i, amp + (min * amp));
-				ctx.lineTo(i, amp + (max * amp));
+				// Calcular coordenada Y superior (invertida)
+				const y = amp + (min * amp);
+				// Calcular la altura total del bloque 
+				const rectHeight = Math.max(1, (max - min) * amp); // Mínimo 1px para silencios absolutos
+				
+				// Dibujar un bloque sólido e independiente
+				ctx.fillRect(i, y, 1, rectHeight);
 			}
-			ctx.stroke();
+		}
+
+		// Coordinador Visual 
+		async function drawSampleWaveEditor(sampleId) {
+			currentRenderId++; 
+			const myRenderId = currentRenderId;
+
+			const canvas = document.getElementById('sample-wave-canvas');
+			const ctx = canvas.getContext('2d');
+			const t = activeSampleTrack;
+			
+			// Abortar si no hay pista o audio válido
+			if (!t || !sampleBuffers[sampleId]) return;
+			
+			// Limpiar el lienzo
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			const originalBuffer = sampleBuffers[sampleId];
+			
+			// Rasterizar señal original en el fondo (Gris oscuro)
+			drawWaveOnCanvas(ctx, originalBuffer.getChannelData(0), canvas.width, canvas.height, '#d2d2d2'); //#2a2a35
+
+			const titleLabel = document.getElementById('sample-track-name');
+			titleLabel.innerText = `- ${t.name} (Calculando EQ...)`;
+
+			try {
+				// Renderizar ecualización asíncrona
+				const eqBuffer = await getEqBuffer(originalBuffer, t.eq);
+
+				// Comprobar vigencia del ticket de renderizado
+				if (myRenderId !== currentRenderId || !activeSampleTrack) return;
+
+				// Rasterizar señal procesada sobrepuesta (Verde brillante)
+				drawWaveOnCanvas(ctx, eqBuffer.getChannelData(0), canvas.width, canvas.height, 'rgba(46, 204, 113, 0.6)');
+				titleLabel.innerText = `- ${t.name}`; 
+			} catch (e) {
+				console.error("Error DSP Offline:", e);
+				if (myRenderId === currentRenderId) {
+					titleLabel.innerText = `- ${t.name}`;
+				}
+			}
 		}
 
 		/**
@@ -2077,6 +2151,79 @@
 
 			// Actualizar el editor de samples
 			openSampleEditor(actTrk);
+		}
+
+		function toggleSamplePreview() {
+			const t = activeSampleTrack;
+			if (!t || !sampleBuffers[t.sampleId]) return;
+			const btn = document.getElementById('sample-play-btn');
+
+			if (isPreviewing) {
+				stopSamplePreview();
+				return;
+			}
+
+			// Iniciar Reproducción
+			previewSource = A_CTX.createBufferSource();
+			previewSource.buffer = sampleBuffers[t.sampleId];
+
+			// Aplicar EQ en tiempo real para que escuche el mismo rojo que ve
+			const eqChain = createEQ(A_CTX, t.eq);
+			previewSource.connect(eqChain.in);
+			eqChain.out.connect(A_CTX.destination);
+
+			const trimStart = t.trim[0];
+			const trimEnd = t.trim[1];
+			const duration = trimEnd - trimStart;
+
+			// Reproducir exactamente la zona recortada
+			previewSource.start(0, trimStart, duration);
+
+			// Sincronizar el tiempo real con el tiempo del buffer para la animación
+			previewStartTime = A_CTX.currentTime - trimStart;
+			isPreviewing = true;
+			btn.innerText = "⏹ Stop";
+			btn.style.background = "#e74c3c";
+
+			setElementDisplay('playhead-line', 'block');
+
+			previewSource.onended = () => stopSamplePreview();
+			animatePlayhead();
+		}
+
+		function stopSamplePreview() {
+			if (previewSource) {
+				previewSource.onended = null;
+				try { previewSource.stop(); } catch (e) { }
+				previewSource = null;
+			}
+			isPreviewing = false;
+			cancelAnimationFrame(previewAnimFrame);
+
+			const btn = document.getElementById('sample-play-btn');
+			btn.innerText = "▶ Preview";
+			btn.style.background = "#e67e22";
+			setElementDisplay('playhead-line', 'none');
+		}
+
+		function animatePlayhead() {
+			if (!isPreviewing || !activeSampleTrack) return;
+
+			const t = activeSampleTrack;
+			const totalDur = sampleBuffers[t.sampleId].duration;
+			const currentAbsTime = A_CTX.currentTime - previewStartTime;
+
+			// Calcular porcentaje exacto y mover el div usando CSS para máximo rendimiento
+			const percent = (currentAbsTime / totalDur) * 100;
+			document.getElementById('playhead-line').style.left = `${percent}%`;
+
+			// Parar automáticamente si se pasa del Trim Out
+			if (currentAbsTime >= t.trim[1] || currentAbsTime >= totalDur) {
+				stopSamplePreview();
+				return;
+			}
+
+			previewAnimFrame = requestAnimationFrame(animatePlayhead);
 		}
 
 		function saveCode() {

@@ -16,3 +16,11 @@ This project is protected under a Custom Software License.
 - ⚠️ I'm not responsible for what you do with your projects
 
 For full license details, see the [LICENSE.md](./LICENSE.md) file.
+
+## Source Code
+
+The source code for this project is **not publicly available**.
+
+Only the compiled/built version is hosted here for use via GitHub Pages.
+
+If you're interested in licensing or collaboration, contact Wither362 (me) via private.

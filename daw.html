@@ -407,7 +407,7 @@
 		<div id="left-panel">
 			<div id="tracks-container"></div>
 			<div class="add-track-btn-container">
-				<button class="btn blue" id="add-track" style="width: 100%;" title="Adds a new track to the list of tracks of this project">New Track</button>
+				<button class="btn blue" id="add-track" style="width: 100%;">New Track</button>
 			</div>
 
 			<div id="master-rack">
@@ -439,17 +439,7 @@
 		<div class="modal-content">
 			<div style="display:flex; justify-content:space-between;">
 				<h3 id="modal-title" style="margin:0; color:var(--accent);">Editing</h3>
-				<button class="btn stop" id="delete-track" title="Closes this menu">X</button>
-			</div>
-
-			<div id="sampler-ui" style="display:none; flex-direction:column; gap:10px;">
-				<label class="btn blue">Load Audio File (WAV/MP3)<input type="file" id="load-audio" style="display:none;" accept="audio/*"></label>
-				<canvas id="wave-canvas" width="560" height="100" style="background:#000; border:1px solid var(--border);"></canvas>
-				<div style="display:flex; gap:10px;">
-					<label>Trim Inicio (s): <input type="number" id="samp-start" step="0.01" value="0"></label>
-					<label>Trim Fin (s): <input type="number" id="samp-end" step="0.01" value="0"></label>
-				</div>
-				<button class="btn blue" id="open-library">Open Cloud Library</button>
+				<button class="btn stop" id="close-tool-modal" title="Closes this menu">X</button>
 			</div>
 
 			<div id="code-ui" style="display:none; flex-direction:column; gap:10px;">
@@ -479,21 +469,11 @@
 		<button class="btn stop" id="close-library" style="margin-top:15px; width:100%;">Close</button>
 	</div>
 
-	<!-- Ventana de errores -->
-	<div id="error-modal"
-		style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%); background:var(--panel); border:2px solid var(--accent); padding:20px; z-index:2000; color:white; width: 300px; max-height: 70vh; overflow-y: auto;">
-		<h3>Error:</h3>
-		<div id="error-description" style="background:#222; padding:10px; font-size:11px; border-radius:4px; max-height:100px; overflow-y:auto;">
-			Error text
-		</div>
-		<button class="btn stop" id="close-error-window" style="margin-top:15px; width:100%;">Close error window</button>
-	</div>
-
 	<!-- Ventana de ecualización avanzada -->
 	<div id="eq-modal"
 		style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:var(--panel); border:2px solid var(--accent); padding:20px; z-index:3000; color:white; width: 650px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);">
 		<div style="display:flex; justify-content:space-between; margin-bottom: 10px;">
-			<h3 style="margin:0;">🎛️ Advanced EQ System - <span id="eq-track-name" style="color:var(--accent);"></span></h3>
+			<h3 style="margin:0;">Advanced EQ System - <span id="eq-track-name" style="color:var(--accent);"></span></h3>
 			<button class="btn stop" onclick="closeEQ()">X</button>
 		</div>
 
@@ -534,12 +514,56 @@
 		</div>
 	</div>
 
+	<!-- Ventana de editor de samples -->
+	<div id="sample-editor-modal"
+		style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:var(--panel); border:2px solid var(--accent); padding:20px; z-index:4000; color:white; width: 600px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);">
+		<div style="display:flex; justify-content:space-between; margin-bottom: 10px;">
+			<h3 style="margin:0;">Samples Editor <span id="sample-track-name" style="color:var(--accent);"></span></h3>
+			<button class="btn stop" onclick="closeSampleEditor()">X</button>
+		</div>
+
+		<div style="display:flex; justify-content: center; margin-bottom: 10px; flex-direction:column">
+			<label class="btn blue">Load Audio File (WAV/MP3)<input type="file" id="load-audio" style="display:none;" accept="audio/*"></label>
+		</div>
+
+		<div id="sample-wave-canvas-parent" style="position: relative; width: 100%; height: 150px; background:#0a0a14; border:1px solid var(--border); border-radius:4px; margin-bottom: 15px;">
+			<canvas id="sample-wave-canvas" width="600" height="150" style="position: absolute; left:0; top:0;"></canvas>
+			<div id="trim-mask-start" style="position:absolute; left:0; top:0; height:100%; width:0%; background:rgba(0,0,0,0.7);"></div>
+			<div id="trim-mask-end" style="position:absolute; right:0; top:0; height:100%; width:0%; background:rgba(0,0,0,0.7);"></div>
+		</div>
+
+		<div style="display:flex; justify-content: space-between; gap: 10px; column-gap: 20px;">
+			<div style="flex-grow:1;">
+				<label>Trim In: <input type="number" id="trim-in-num" min="0" step="0.001" value="0"></label>
+				<input type="range" id="trim-in-slider" min="0" max="100" step="0.1" value="0" style="width:100%;">
+			</div>
+			<div style="flex-grow:1;">
+				<label>Trim Out: <input type="number" id="trim-out-num" min="0" step="0.001" value="0"></label>
+				<input type="range" id="trim-out-slider" min="0" max="100" step="0.1" value="100" style="width:100%;">
+			</div>
+		</div>
+
+		<div style="display:flex; justify-content: center; margin-bottom: 10px; flex-direction:column">
+			<button class="btn blue" id="open-library">Open Cloud Library</button>
+		</div>
+	</div>
+
 	<!-- Ventana de ajustes globales -->
 	<div id="settings-modal" style="display:none; position:fixed; top:20%; left:50%; transform:translateX(-50%); background:var(--panel); border:2px solid var(--accent); padding:20px; z-index:3000; color:white; width: 300px; border-radius: 8px;">
 		<!-- Todo se define en la función openNEXOSettings() -->
 	</div>
 
-	<!-- Menú "de contexto" -->
+	<!-- Ventana de errores -->
+	<div id="error-modal"
+		style="display:none; position:fixed; top:10%; left:50%; transform:translateX(-50%); background:var(--panel); border:2px solid var(--accent); padding:20px; z-index:2000; color:white; width: 300px; max-height: 70vh; overflow-y: auto;">
+		<h3>Error:</h3>
+		<div id="error-description" style="background:#222; padding:10px; font-size:11px; border-radius:4px; max-height:100px; overflow-y:auto;">
+			Error text
+		</div>
+		<button class="btn stop" id="close-error-window" style="margin-top:15px; width:100%;">Close error window</button>
+	</div>
+
+	<!-- Context menu -->
 	<div id="ctx-menu" style="display:none; position:fixed; background:var(--panel); border:1px solid var(--accent); border-radius:4px; z-index:1000; flex-direction:column; padding:5px; box-shadow: 0 4px 6px rgba(0,0,0,0.5);">
 		<button class="btn blue" id="ctx-copy" style="margin-bottom:2px;">Copy</button>
 		<button class="btn blue" id="ctx-dup" style="margin-bottom:2px;">Duplicate</button>
@@ -1866,26 +1890,152 @@
 		//#endregion
 
 		//#region --- VENTANAS (Subescenas) Y EDITORES AVANZADOS (Sampler / Custom JS) ---
+
+		// Abrir ventana de opciones avanzadas de la pista
 		function openAdvanced(idx) {
+			// Asegurarse de que la pista sea la que el usuario ha pulsado el botón de ajustes
 			actTrk = idx;
 			buildTracks();
 
 			const t = s.tracks[idx];
-			setElementText('modal-title', `Editing: ${t.name}`);
-			setElementDisplay('sampler-ui', t.type === 'sampler' ? 'flex' : 'none');
-			setElementDisplay('code-ui', t.type === 'custom' ? 'flex' : 'none');
+			// Abrir el menú de código
+			if (t.type === 'custom') {
+				setElementText('modal-title', `Editing: ${t.name}`);
+				//setElementDisplay('sampler-ui', t.type === 'sampler' ? 'flex' : 'none');
+				setElementDisplay('code-ui', 'flex');
 
-			if (t.type === 'custom')
 				setElementValue('custom-code', t.customJS || "");
-
-			if (t.type === 'sampler') {
-				setElementValue('samp-start', t.trim[0]);
-				setElementValue('samp-end', t.trim[1]);
-				if (t.sampleId) {
-					drawWaveform(t.sampleId);
-				}
+				setElementDisplay('tool-modal', 'flex');
+			} else if (t.type === 'sampler') {
+				openSampleEditor(idx);
 			}
-			setElementDisplay('tool-modal', 'flex');
+		}
+
+		// Editor de samples
+		let activeSampleTrack = null;
+
+		function openSampleEditor(trackIdx) {
+			const t = s.tracks[trackIdx];
+			const trackHasSample = t.sampleId && sampleBuffers[t.sampleId];
+
+			document.getElementById('sample-wave-canvas').width = parseInt(document.getElementById('sample-wave-canvas-parent').offsetWidth);
+
+			document.getElementById('trim-in-slider').disabled
+				= document.getElementById('trim-out-slider').disabled
+				= document.getElementById('trim-in-num').disabled
+				= document.getElementById('trim-out-num').disabled
+				= !trackHasSample;
+
+			activeSampleTrack = t;
+			document.getElementById('sample-track-name').innerText = `- ${t.name}`;
+
+			if (trackHasSample) {
+				// Inicializar array de trim si no existe: [Inicio (Segundos), Fin (Segundos)]
+				const totalDur = sampleBuffers[t.sampleId].duration;
+
+				// Si no hay trim configurado, por defecto es de 0 al final del audio
+				if (!t.trim || t.trim.length < 2 || t.trim[1] === 0) {
+					t.trim = [0, totalDur];
+				}
+
+				// Referencias a los elementos del DOM
+				const slIn = document.getElementById('trim-in-slider');
+				const slOut = document.getElementById('trim-out-slider');
+				const numIn = document.getElementById('trim-in-num');
+				const numOut = document.getElementById('trim-out-num');
+
+				numIn.max = totalDur; numOut.max = totalDur;
+
+				const syncUI = () => {
+					// Actualizar sliders (Porcentajes visuales de 0 a 100)
+					slIn.value = (t.trim[0] / totalDur) * 100;
+					slOut.value = (t.trim[1] / totalDur) * 100;
+
+					// Actualizar nums (Segundos exactos con 3 decimales)
+					numIn.value = t.trim[0].toFixed(3);
+					numOut.value = t.trim[1].toFixed(3);
+
+					// Actualizar máscaras del waveform
+					document.getElementById('trim-mask-start').style.width = `${slIn.value}%`;
+					document.getElementById('trim-mask-end').style.width = `${100 - slOut.value}%`;
+				};
+
+				const handleTrimChange = (isStart, value, isPercentage) => {
+					// Convertir el valor introducido a segundos reales
+					let valInSeconds = isPercentage ? (parseFloat(value) / 100) * totalDur : parseFloat(value);
+
+					// Validar que los trims no se crucen (10ms de margen mínimo)
+					if (isStart) {
+						valInSeconds = Math.max(0, Math.min(valInSeconds, t.trim[1] - 0.01));
+						t.trim[0] = valInSeconds;
+					} else {
+						valInSeconds = Math.min(totalDur, Math.max(valInSeconds, t.trim[0] + 0.01));
+						t.trim[1] = valInSeconds;
+					}
+
+					syncUI();
+				};
+
+				// oninput para sliders
+				slIn.oninput = (e) => handleTrimChange(true, e.target.value, true);
+				slOut.oninput = (e) => handleTrimChange(false, e.target.value, true);
+
+				// onchange para actualizar una vez ya editado el número
+				numIn.onchange = (e) => handleTrimChange(true, e.target.value, false);
+				numOut.onchange = (e) => handleTrimChange(false, e.target.value, false);
+
+				syncUI();
+				drawSampleWaveEditor(t.sampleId);
+			}
+
+			setElementDisplay('sample-editor-modal', 'block');
+		}
+
+		function closeSampleEditor() {
+			document.getElementById('sample-editor-modal').style.display = 'none';
+			activeSampleTrack = null;
+		}
+
+		function drawSampleWaveEditor(sampleId) {
+			const canvas = document.getElementById('sample-wave-canvas');
+			const ctx = canvas.getContext('2d');
+			const buf = sampleBuffers[sampleId].getChannelData(0);
+			
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			ctx.beginPath();
+			ctx.strokeStyle = '#2ecc71'; // Color verde DaVinci
+			
+			const step = Math.ceil(buf.length / canvas.width);
+			const amp = canvas.height / 2;
+			
+			for(let i = 0; i < canvas.width; i++) {
+				let min = 1.0, max = -1.0;
+				// Evitar dibujar exceso
+				let hasData = false;
+				
+				for (let j = 0; j < step; j++) {
+					const idx = (i * step) + j;
+					
+					// Romper el bucle si el waveform se está saliendo del buffer real de audio
+					if (idx >= buf.length) break; 
+					
+					const datum = buf[idx];
+					if (datum < min) min = datum;
+					if (datum > max) max = datum;
+					hasData = true;
+				}
+				
+				// Si no hay datos (final del archivo o audio corto)
+				// Forzar la amplitud a 0 (silencio / línea plana)
+				if (!hasData) {
+					min = 0;
+					max = 0;
+				}
+				
+				ctx.moveTo(i, amp + (min * amp));
+				ctx.lineTo(i, amp + (max * amp));
+			}
+			ctx.stroke();
 		}
 
 		/**
@@ -1912,7 +2062,7 @@
 
 				reader.addEventListener('load', (evt) => {
 					s.tracks[actTrk].sampleBase64 = evt.target.result;
-					resolve(); // Avisamos que terminó
+					resolve();
 				});
 
 				reader.addEventListener('error', (err) => reject(err)); // Manejo de errores
@@ -1924,44 +2074,15 @@
 			s.tracks[actTrk].trim = [0, audioBuf.duration];
 
 			console.log(audioBuf.duration);
-			setElementValue('samp-end', audioBuf.duration.toFixed(2));
-			drawWaveform(sampleId);
-		}
 
-		function drawWaveform(id) {
-			const buf = sampleBuffers[id];
-			if (!buf)
-				return;
-			const wc = document.getElementById('wave-canvas'), wCtx = wc.getContext('2d');
-			wCtx.clearRect(0, 0, wc.width, wc.height);
-			wCtx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-
-			const data = buf.getChannelData(0);
-			const step = Math.ceil(data.length / wc.width);
-			const amp = wc.height / 2;
-
-			wCtx.beginPath();
-			for (let i = 0; i < wc.width; i++) {
-				let min = 1.0, max = -1.0;
-				for (let j = 0; j < step; j++) {
-					const datum = data[(i * step) + j];
-					if (datum < min) min = datum;
-					if (datum > max) max = datum;
-				}
-				wCtx.moveTo(i, (1 + min) * amp); wCtx.lineTo(i, (1 + max) * amp);
-			}
-			wCtx.strokeStyle = '#3498db';
-			wCtx.stroke();
+			// Actualizar el editor de samples
+			openSampleEditor(actTrk);
 		}
 
 		function saveCode() {
 			s.tracks[actTrk].customJS = document.getElementById('custom-code').value;
 			setElementDisplay('tool-modal', 'none');
 		}
-
-		// Guardar Trim de Sampler al cambiar inputs
-		document.getElementById('samp-start').addEventListener('change', (e) => s.tracks[actTrk].trim[0] = parseFloat(e.target.value));
-		document.getElementById('samp-end').addEventListener('change', (e) => s.tracks[actTrk].trim[1] = parseFloat(e.target.value));
 
 		// Función para abrir la subescena del EQ
 		function openEQ(trackIdx) {
@@ -2016,7 +2137,6 @@
 			/** @type {CanvasRenderingContext2D} */
 			const ctx = canvas.getContext('2d');
 
-			// Limpiar fondo con estela (efecto DAW profesional)
 			ctx.fillStyle = 'rgba(10, 10, 20, 0.4)';
 			ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -2568,7 +2688,7 @@
 			document.getElementById('export-gd').addEventListener('click', exportJSON);
 			document.getElementById('export-wav').addEventListener('click', exportWAV);
 
-			document.getElementById('delete-track').addEventListener('click', () => {
+			document.getElementById('close-tool-modal').addEventListener('click', () => {
 				saveState();
 				setElementDisplay('tool-modal', 'none');
 			});
